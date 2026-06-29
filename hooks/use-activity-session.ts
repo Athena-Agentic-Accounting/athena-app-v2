@@ -35,10 +35,16 @@ export function useActivitySession(activityId: string, initialPrompt?: string | 
   const [streamStatus, setStreamStatus] = useState<StreamStatus>("idle")
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const [isAwaitingResponse, setIsAwaitingResponse] = useState(false)
   const [initialPromptSent, setInitialPromptSent] = useState(false)
 
   const activityIdRef = useRef(activityId)
+  const assistantCountRef = useRef(0)
   activityIdRef.current = activityId
+
+  useEffect(() => {
+    assistantCountRef.current = messages.filter((message) => message.role === "assistant").length
+  }, [messages])
 
   useEffect(() => {
     let cancelled = false
@@ -74,6 +80,21 @@ export function useActivitySession(activityId: string, initialPrompt?: string | 
     }
   }, [activityId, getToken])
 
+  const refreshMessages = useCallback(async () => {
+    const token = await getToken()
+    const items = sortMessagesByCreatedAt(
+      await getActivityMessages(token, activityIdRef.current),
+    )
+    const mapped = mapActivityMessages(items)
+    setMessages(mapped)
+
+    const assistantCount = mapped.filter((message) => message.role === "assistant").length
+    if (assistantCount > assistantCountRef.current) {
+      setIsAwaitingResponse(false)
+    }
+    assistantCountRef.current = assistantCount
+  }, [getToken])
+
   useEffect(() => {
     if (!initialPrompt || initialPromptSent || isLoading) return
 
@@ -88,6 +109,7 @@ export function useActivitySession(activityId: string, initialPrompt?: string | 
     let cancelled = false
 
     async function sendInitialPrompt() {
+      setIsAwaitingResponse(true)
       try {
         const token = await getToken()
         if (cancelled) return
@@ -96,13 +118,10 @@ export function useActivitySession(activityId: string, initialPrompt?: string | 
         if (cancelled) return
 
         setInitialPromptSent(true)
-        const items = sortMessagesByCreatedAt(
-          await getActivityMessages(token, activityIdRef.current),
-        )
-        if (cancelled) return
-        setMessages(mapActivityMessages(items))
+        await refreshMessages()
       } catch {
         if (!cancelled) {
+          setIsAwaitingResponse(false)
           toast.error("Could not send initial prompt")
         }
       }
@@ -112,17 +131,27 @@ export function useActivitySession(activityId: string, initialPrompt?: string | 
     return () => {
       cancelled = true
     }
-  }, [activityId, getToken, initialPrompt, initialPromptSent, isLoading, messages])
+  }, [
+    activityId,
+    getToken,
+    initialPrompt,
+    initialPromptSent,
+    isLoading,
+    messages,
+    refreshMessages,
+  ])
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined
     let cancelled = false
+    let retryTimer: number | undefined
 
     async function connect() {
       setStreamStatus("connecting")
       const token = await getToken()
       if (cancelled) return
 
+      unsubscribe?.()
       unsubscribe = subscribeActivityStream(token, activityIdRef.current, {
         onOpen: () => {
           if (!cancelled) setStreamStatus("connected")
@@ -131,10 +160,19 @@ export function useActivitySession(activityId: string, initialPrompt?: string | 
           if (cancelled) return
           const parsed = parseStreamEvent(raw, activityIdRef.current)
           if (!parsed) return
+          setIsAwaitingResponse(false)
           setStreamEvents((current) => mergeStreamEvents(current, parsed))
         },
+        onDone: () => {
+          if (cancelled) return
+          void refreshMessages()
+        },
         onError: () => {
-          if (!cancelled) setStreamStatus("error")
+          if (cancelled) return
+          setStreamStatus("error")
+          retryTimer = window.setTimeout(() => {
+            if (!cancelled) void connect()
+          }, 4000)
         },
       })
     }
@@ -143,9 +181,27 @@ export function useActivitySession(activityId: string, initialPrompt?: string | 
 
     return () => {
       cancelled = true
+      if (retryTimer) window.clearTimeout(retryTimer)
       unsubscribe?.()
     }
-  }, [activityId, getToken])
+  }, [activityId, getToken, refreshMessages])
+
+  useEffect(() => {
+    if (!isAwaitingResponse) return
+
+    const pollTimer = window.setInterval(() => {
+      void refreshMessages()
+    }, 2500)
+
+    const timeoutTimer = window.setTimeout(() => {
+      setIsAwaitingResponse(false)
+    }, 120000)
+
+    return () => {
+      window.clearInterval(pollTimer)
+      window.clearTimeout(timeoutTimer)
+    }
+  }, [isAwaitingResponse, refreshMessages])
 
   const artifact = useMemo(
     () => buildArtifactFromStreamEvents(streamEvents),
@@ -156,14 +212,6 @@ export function useActivitySession(activityId: string, initialPrompt?: string | 
     () => extractThoughtsFromStream(streamEvents),
     [streamEvents],
   )
-
-  const refreshMessages = useCallback(async () => {
-    const token = await getToken()
-    const items = sortMessagesByCreatedAt(
-      await getActivityMessages(token, activityIdRef.current),
-    )
-    setMessages(mapActivityMessages(items))
-  }, [getToken])
 
   const refreshActivity = useCallback(async () => {
     const token = await getToken()
@@ -182,12 +230,14 @@ export function useActivitySession(activityId: string, initialPrompt?: string | 
         { id: optimisticId, role: "user", content: trimmed },
       ])
       setIsSending(true)
+      setIsAwaitingResponse(true)
 
       try {
         const token = await getToken()
         await postActivityMessage(token, activityIdRef.current, trimmed)
         await refreshMessages()
       } catch (err) {
+        setIsAwaitingResponse(false)
         setMessages((current) => current.filter((message) => message.id !== optimisticId))
         toast.error("Could not send message", {
           description: err instanceof Error ? err.message : "Something went wrong.",
@@ -262,6 +312,7 @@ export function useActivitySession(activityId: string, initialPrompt?: string | 
     streamStatus,
     isLoading,
     isSending,
+    isAwaitingResponse,
     sendMessage,
     handlePlanDecision,
     handleApprovalDecision,

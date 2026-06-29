@@ -4,6 +4,7 @@ import {
   RiBarChartLine,
   RiBookOpenLine,
   RiBuildingLine,
+  RiCalendarScheduleLine,
   RiFlaskLine,
   RiGroupLine,
   RiHomeLine,
@@ -35,6 +36,13 @@ export const MAIN_NAV_ITEMS: SidebarNavItem[] = [
     icon: RiListCheck2,
   },
   {
+    id: "schedules",
+    label: "Schedules",
+    href: "/schedules",
+    icon: RiCalendarScheduleLine,
+    matchPrefix: true,
+  },
+  {
     id: "financial-reports",
     label: "Financial reports",
     href: "/financial-reports",
@@ -46,7 +54,7 @@ export const MAIN_NAV_ITEMS: SidebarNavItem[] = [
     href: "/bank-transactions",
     icon: RiBankCardLine,
   },
-  { id: "knowledge", label: "Knowledge", href: "/knowledge", icon: RiBookOpenLine },
+  { id: "skills", label: "Skills", href: "/skills", icon: RiBookOpenLine, matchPrefix: true },
   { id: "company", label: "Company", href: "/company", icon: RiBuildingLine },
   { id: "demo", label: "Demo", href: "/demo", icon: RiFlaskLine },
 ]
@@ -63,21 +71,21 @@ export const RECENT_NAV_ITEMS: RecentNavItem[] = [
   {
     id: "unearned-deferred",
     label: "Unearned/Deferred Reve...",
-    href: "/knowledge/unearned-deferred",
+    href: "/skills",
     dotColor: "bg-violet-500",
     timeAgo: "1h",
   },
   {
     id: "fixed-asset",
     label: "Fixed Asset Management",
-    href: "/knowledge/fixed-asset",
+    href: "/skills",
     dotColor: "bg-blue-500",
     timeAgo: "2h",
   },
   {
     id: "book-payroll",
     label: "Book payroll entries",
-    href: "/knowledge/book-payroll",
+    href: "/skills",
     dotColor: "bg-violet-500",
     timeAgo: "2h",
   },
@@ -88,4 +96,13 @@ export function isNavItemActive(pathname: string, item: SidebarNavItem): boolean
     return pathname === item.href || pathname.startsWith(`${item.href}/`)
   }
   return pathname === item.href
+}
+
+export function getVisibleNavItems(options: {
+  isInHouse: boolean
+}): SidebarNavItem[] {
+  return MAIN_NAV_ITEMS.filter((item) => {
+    if (item.id === "clients" && options.isInHouse) return false
+    return true
+  })
 }

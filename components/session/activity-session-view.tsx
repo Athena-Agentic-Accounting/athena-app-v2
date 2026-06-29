@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 
+import { EditActivityDialog } from "@/components/session/edit-activity-dialog"
 import { SessionWorkspaceView } from "@/components/session/session-workspace-view"
 import { Spinner } from "@/components/ui/spinner"
 import { useActivitySession } from "@/hooks/use-activity-session"
@@ -14,6 +16,7 @@ type ActivitySessionViewProps = {
 export function ActivitySessionView({ activityId, initialPrompt }: ActivitySessionViewProps) {
   const router = useRouter()
   const session = useActivitySession(activityId, initialPrompt)
+  const [editOpen, setEditOpen] = useState(false)
 
   if (session.isLoading) {
     return (
@@ -24,20 +27,32 @@ export function ActivitySessionView({ activityId, initialPrompt }: ActivitySessi
   }
 
   return (
-    <SessionWorkspaceView
-      activityId={activityId}
-      activityName={session.activity?.name}
-      artifact={session.artifact}
-      thoughts={session.thoughts}
-      streamEvents={session.streamEvents}
-      chatMessages={session.messages}
-      showPlanAction={Boolean(session.artifact)}
-      streamStatus={session.streamStatus}
-      isSending={session.isSending}
-      onSendMessage={session.sendMessage}
-      onPlanDecision={session.handlePlanDecision}
-      onApprovalDecision={session.handleApprovalDecision}
-      onClose={() => router.push("/home")}
-    />
+    <>
+      <SessionWorkspaceView
+        activityId={activityId}
+        activityName={session.activity?.name}
+        activityLocked={Boolean(session.activity?.auditLockedAt)}
+        artifact={session.artifact}
+        thoughts={session.thoughts}
+        streamEvents={session.streamEvents}
+        chatMessages={session.messages}
+        showPlanAction={Boolean(session.artifact)}
+        streamStatus={session.streamStatus}
+        isSending={session.isSending}
+        isAwaitingResponse={session.isAwaitingResponse}
+        onSendMessage={session.sendMessage}
+        onPlanDecision={session.handlePlanDecision}
+        onApprovalDecision={session.handleApprovalDecision}
+        onEditActivity={() => setEditOpen(true)}
+        onClose={() => router.push("/home")}
+      />
+
+      <EditActivityDialog
+        activity={session.activity}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onUpdated={() => void session.refreshActivity()}
+      />
+    </>
   )
 }

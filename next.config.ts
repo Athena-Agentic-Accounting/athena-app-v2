@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/dashboard", destination: "/board", permanent: false },
       { source: "/dashboard/:path*", destination: "/board", permanent: false },
+      { source: "/knowledge", destination: "/skills", permanent: false },
+      { source: "/knowledge/:path*", destination: "/skills", permanent: false },
     ]
   },
 }

@@ -34,6 +34,7 @@ type ChecklistBoardProps = {
   onAddTask?: (status: TaskStatus) => void
   showEmptyState?: boolean
   emptyDescription?: string
+  showClientTag?: boolean
 }
 
 function isColumnStatus(value: unknown): value is TaskStatus {
@@ -43,9 +44,11 @@ function isColumnStatus(value: unknown): value is TaskStatus {
 function DraggableTaskCard({
   task,
   onClick,
+  showClientTag,
 }: {
   task: ChecklistTask
   onClick?: () => void
+  showClientTag?: boolean
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
@@ -58,6 +61,7 @@ function DraggableTaskCard({
         task={task}
         onClick={onClick}
         isDragging={isDragging}
+        showClientTag={showClientTag}
         dragHandleProps={{ attributes, listeners }}
       />
     </div>
@@ -72,6 +76,7 @@ function BoardColumn({
   onWelcomeCheckClick,
   onAddTask,
   isDropTarget,
+  showClientTag,
 }: {
   columnId: TaskStatus
   label: string
@@ -80,6 +85,7 @@ function BoardColumn({
   onWelcomeCheckClick?: () => void
   onAddTask?: (status: TaskStatus) => void
   isDropTarget: boolean
+  showClientTag?: boolean
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId })
 
@@ -104,6 +110,7 @@ function BoardColumn({
           <DraggableTaskCard
             key={task.id}
             task={task}
+            showClientTag={showClientTag}
             onClick={
               task.id === "welcome-check"
                 ? onWelcomeCheckClick
@@ -135,6 +142,7 @@ export function ChecklistBoard({
   onAddTask,
   showEmptyState = false,
   emptyDescription,
+  showClientTag = false,
 }: ChecklistBoardProps) {
   const [activeTask, setActiveTask] = useState<ChecklistTask | null>(null)
   const [activeColumnId, setActiveColumnId] = useState<TaskStatus | null>(null)
@@ -221,6 +229,7 @@ export function ChecklistBoard({
                 onWelcomeCheckClick={onWelcomeCheckClick}
                 onAddTask={onAddTask}
                 isDropTarget={activeColumnId === column.id && activeTask !== null}
+                showClientTag={showClientTag}
               />
             )
           })}
@@ -228,7 +237,9 @@ export function ChecklistBoard({
       </div>
 
       <DragOverlay dropAnimation={{ duration: 180, easing: "ease-out" }}>
-        {activeTask ? <TaskCard task={activeTask} isDragging /> : null}
+        {activeTask ? (
+          <TaskCard task={activeTask} isDragging showClientTag={showClientTag} />
+        ) : null}
       </DragOverlay>
     </DndContext>
   )

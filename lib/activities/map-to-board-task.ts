@@ -1,5 +1,5 @@
+import { formatActivityCategory } from "@/lib/activities/categories"
 import type { ActivityRecord } from "@/lib/activities/types"
-import { formatActivityType } from "@/lib/activities/format-activity-type"
 import type { ChecklistTask, TaskStatus } from "@/lib/checklist/mock-tasks"
 
 const STATUS_MAP: Record<string, TaskStatus> = {
@@ -22,13 +22,18 @@ export function mapActivityStatus(status?: string): TaskStatus {
   return STATUS_MAP[status] ?? "to-do"
 }
 
-export function mapActivityToChecklistTask(activity: ActivityRecord): ChecklistTask {
+export function mapActivityToChecklistTask(
+  activity: ActivityRecord,
+  options?: { clientName?: string },
+): ChecklistTask {
   return {
     id: activity.id,
     title: activity.name,
     status: mapActivityStatus(activity.status),
-    category: formatActivityType(activity.type),
+    category: formatActivityCategory(activity.type),
     dueDate: formatStartDate(activity.startDate ?? undefined),
     assignees: [],
+    clientId: activity.clientId,
+    clientName: options?.clientName,
   }
 }

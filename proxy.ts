@@ -4,6 +4,10 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/auth(.*)",
   "/api/auth(.*)",
+  "/api/connections/(.*)/callback",
+  "/api/integrations/(.*)/callback",
+  "/integrations/callback(.*)",
+  "/settings/connections(.*)",
 ])
 
 export const proxy = clerkMiddleware(

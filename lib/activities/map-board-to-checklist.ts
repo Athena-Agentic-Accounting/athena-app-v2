@@ -1,6 +1,6 @@
 import type { ActivityBoardResponse, BoardActivity } from "@/lib/activities/board-types"
 import { getBoardColumns } from "@/lib/activities/board-types"
-import { formatActivityType } from "@/lib/activities/format-activity-type"
+import { formatActivityCategory } from "@/lib/activities/categories"
 import { mapActivityStatus } from "@/lib/activities/map-to-board-task"
 import type { ChecklistTask } from "@/lib/checklist/mock-tasks"
 
@@ -28,11 +28,13 @@ function mapBoardActivityToChecklistTask(
     id: activity.id,
     title: activity.name,
     status,
-    category: formatActivityType(activity.type) || activity.clientName || "General",
+    category: formatActivityCategory(activity.type),
     dueDate: formatDueDate(activity.dueDate ?? activity.startDate),
     assignees: activity.assignedTo?.name
       ? [getAssigneeInitials(activity.assignedTo.name)]
       : [],
+    clientId: activity.clientId,
+    clientName: activity.clientName,
   }
 }
 

@@ -8,6 +8,7 @@ import { useUser } from "@clerk/nextjs"
 import { NewTaskDialog } from "@/components/checklist/new-task-dialog"
 import { WelcomeCheckSheet } from "@/components/checklist/welcome-check-sheet"
 import { useActivityBoard } from "@/components/providers/activity-board-provider"
+import { useClient } from "@/components/providers/client-provider"
 import { ChecklistToolbar } from "@/components/shell/checklist-toolbar"
 import { PageHeader } from "@/components/shell/page-header"
 import { Spinner } from "@/components/ui/spinner"
@@ -18,6 +19,7 @@ import {
   WELCOME_CHECK_TASK_ID,
 } from "@/lib/checklist/board-tasks"
 import type { ChecklistTask, TaskStatus } from "@/lib/checklist/mock-tasks"
+import { ALL_CLIENTS_ID } from "@/lib/clients/resolve-clients"
 
 const ChecklistBoard = dynamic(
   () =>
@@ -37,6 +39,7 @@ export function CloseChecklistView() {
   const { user } = useUser()
   const { tasks: apiTasks, allCount, assignedCount, isLoading, refreshBoard } =
     useActivityBoard()
+  const { selectedClientId } = useClient()
   const [welcomeSheetOpen, setWelcomeSheetOpen] = useState(false)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>("to-do")
@@ -87,6 +90,8 @@ export function CloseChecklistView() {
     void refreshBoard()
   }
 
+  const showClientTag = selectedClientId === ALL_CLIENTS_ID
+
   const toolbarAllCount = viewState === "welcome-check" ? allCount + 1 : allCount
 
   return (
@@ -119,6 +124,7 @@ export function CloseChecklistView() {
             emptyDescription="Try asking Athena something, or create your first activity."
             onWelcomeCheckClick={() => setWelcomeSheetOpen(true)}
             onAddTask={handleNewTask}
+            showClientTag={showClientTag}
           />
         )}
       </div>

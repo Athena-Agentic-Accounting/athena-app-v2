@@ -114,7 +114,7 @@ export function HomeView() {
       />
 
       <div className="min-h-0 flex-1 overflow-auto bg-background">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-5 py-8">
+        <div className="flex w-full flex-col gap-8 px-5 py-8">
           <section className="space-y-4">
             <div className="space-y-1">
               <h2 className="text-3xl font-semibold tracking-tight text-foreground">

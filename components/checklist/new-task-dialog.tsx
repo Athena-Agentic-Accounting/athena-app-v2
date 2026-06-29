@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react"
 import { useAuth } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 import {
   RiArrowRightSLine,
   RiAttachment2,
@@ -21,12 +22,15 @@ import {
   RiCloseLine,
   RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
+  RiGlobalLine,
   RiLoopLeftLine,
   RiPriceTag3Line,
+  RiTimeLine,
 } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { useClient } from "@/components/providers/client-provider"
+import { SkillMentionTextarea } from "@/components/skills/skill-mention-textarea"
 import { Button } from "@/components/ui/button"
 import { useTenantConfig } from "@/hooks/use-tenant-config"
 import {
@@ -38,13 +42,21 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 import { mapActivityToChecklistTask } from "@/lib/activities/map-to-board-task"
 import {
+  ACTIVITY_CATEGORIES,
   ACTIVITY_RECURRENCE,
-  ACTIVITY_TYPES,
+  DEFAULT_ACTIVITY_CATEGORY,
   type ActivityRecurrence,
   type ActivityType,
 } from "@/lib/activities/types"
+import { formatActivityCategory } from "@/lib/activities/categories"
 import { createActivity } from "@/lib/api/activities"
+import { listSkills, type ApiSkill } from "@/lib/api/skills"
 import { ALL_CLIENTS_ID } from "@/lib/clients/resolve-clients"
+import {
+  COMMON_TIMEZONES,
+  combineStartDateTime,
+  getDefaultTimezone,
+} from "@/lib/schedules/datetime"
 import {
   CHECKLIST_COLUMNS,
   STATUS_LABELS,
@@ -58,6 +70,7 @@ type NewTaskDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated?: (task: ChecklistTask) => void
+  onScheduleCreated?: (scheduleId: string) => void
   defaultStatus?: TaskStatus
 }
 
@@ -108,12 +121,16 @@ export function NewTaskDialog({
   open,
   onOpenChange,
   onCreated,
+  onScheduleCreated,
   defaultStatus = "to-do",
 }: NewTaskDialogProps) {
+  const router = useRouter()
   const { getToken } = useAuth()
   const { organizationName } = useTenantConfig()
-  const { clients, selectedClientId, selectedClient } = useClient()
+  const { clients, selectedClientId } = useClient()
   const titleRef = useRef<HTMLInputElement>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
+  const timeInputRef = useRef<HTMLInputElement>(null)
 
   const selectableClients = useMemo(
     () => clients.filter((client) => client.id !== ALL_CLIENTS_ID),
@@ -125,29 +142,34 @@ export function NewTaskDialog({
   const [description, setDescription] = useState("")
   const [clientId, setClientId] = useState("")
   const [taskStatus, setTaskStatus] = useState<TaskStatus>("to-do")
-  const [activityType, setActivityType] = useState<ActivityType>("close_task")
+  const [activityType, setActivityType] = useState<ActivityType>(DEFAULT_ACTIVITY_CATEGORY)
   const [recurrence, setRecurrence] = useState<ActivityRecurrence>("none")
   const [startDate, setStartDate] = useState("")
+  const [startTime, setStartTime] = useState("09:00")
+  const [timezone, setTimezone] = useState(getDefaultTimezone)
   const [createMore, setCreateMore] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [skills, setSkills] = useState<ApiSkill[]>([])
+  const [attachedSkillIds, setAttachedSkillIds] = useState<string[]>([])
 
   useEffect(() => {
     if (!open) return
 
-    const defaultClientId =
-      selectedClientId !== ALL_CLIENTS_ID
-        ? selectedClientId
-        : (selectableClients[0]?.id ?? "")
+    const isClientScoped = selectedClientId !== ALL_CLIENTS_ID
+    const defaultClientId = isClientScoped ? selectedClientId : ""
 
     setExpanded(false)
     setClientId(defaultClientId)
     setTitle("")
     setDescription("")
     setTaskStatus(defaultStatus)
-    setActivityType("close_task")
+    setActivityType(DEFAULT_ACTIVITY_CATEGORY)
     setRecurrence("none")
     setStartDate("")
+    setStartTime("09:00")
+    setTimezone(getDefaultTimezone())
     setCreateMore(false)
+    setAttachedSkillIds([])
 
     const timer = window.setTimeout(() => titleRef.current?.focus(), 50)
     return () => window.clearTimeout(timer)
@@ -166,17 +188,79 @@ export function NewTaskDialog({
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [open, onOpenChange])
 
+  useEffect(() => {
+    if (!open) return
+
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const token = await getToken()
+        const items = await listSkills(token)
+        if (!cancelled) setSkills(items)
+      } catch {
+        if (!cancelled) setSkills([])
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [getToken, open])
+
   if (!open) return null
 
   const selectedClientName =
-    selectableClients.find((client) => client.id === clientId)?.name ??
-    selectedClient.name
+    selectableClients.find((client) => client.id === clientId)?.name ?? "Select client"
 
-  const typeLabel =
-    ACTIVITY_TYPES.find((option) => option.value === activityType)?.label ?? "Type"
+  function openStartDatePicker() {
+    const input = dateInputRef.current
+    if (!input) return
+
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker()
+        return
+      } catch {
+        // fall through to click
+      }
+    }
+
+    input.click()
+  }
+
+  function openStartTimePicker() {
+    const input = timeInputRef.current
+    if (!input) return
+
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker()
+        return
+      } catch {
+        // fall through to click
+      }
+    }
+
+    input.focus()
+    input.click()
+  }
+
+  function formatTimeLabel(value: string): string {
+    const [hours, minutes] = value.split(":").map(Number)
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return value
+
+    const date = new Date()
+    date.setHours(hours, minutes, 0, 0)
+    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+  }
+
+  const categoryLabel = formatActivityCategory(activityType)
   const recurrenceLabel =
     ACTIVITY_RECURRENCE.find((option) => option.value === recurrence)?.label ??
     "Recurrence"
+  const timezoneLabel =
+    timezone.length > 18 ? `${timezone.slice(0, 16)}…` : timezone
   const statusLabel = STATUS_LABELS[taskStatus]
   const orgLabel = organizationName?.trim() || "Organization"
 
@@ -196,16 +280,39 @@ export function NewTaskDialog({
     setSubmitting(true)
     try {
       const token = await getToken()
-      const activity = await createActivity(token, {
+      const startDateTime = startDate ? combineStartDateTime(startDate, startTime) : undefined
+      const usesScheduleTiming =
+        Boolean(startDateTime) || (recurrence !== "none" && recurrence !== undefined)
+
+      const result = await createActivity(token, {
         clientId,
         name: trimmedTitle,
         type: activityType,
         recurrence: recurrence === "none" ? undefined : recurrence,
-        startDate: startDate || undefined,
+        startDate: startDateTime,
+        timezone: usesScheduleTiming ? timezone : undefined,
+        skillIds: attachedSkillIds.length > 0 ? attachedSkillIds : undefined,
       })
 
+      if (result.kind === "schedule") {
+        toast.success("Schedule created", { description: trimmedTitle })
+        onScheduleCreated?.(result.schedule.id)
+        if (!createMore) {
+          onOpenChange(false)
+          router.push(`/schedules/${result.schedule.id}`)
+        } else {
+          setTitle("")
+          setDescription("")
+          setAttachedSkillIds([])
+          titleRef.current?.focus()
+        }
+        return
+      }
+
       onCreated?.({
-        ...mapActivityToChecklistTask(activity),
+        ...mapActivityToChecklistTask(result.activity, {
+          clientName: selectableClients.find((client) => client.id === clientId)?.name,
+        }),
         status: taskStatus,
       })
       toast.success("Task created", { description: trimmedTitle })
@@ -213,6 +320,7 @@ export function NewTaskDialog({
       if (createMore) {
         setTitle("")
         setDescription("")
+        setAttachedSkillIds([])
         titleRef.current?.focus()
         return
       }
@@ -295,12 +403,14 @@ export function NewTaskDialog({
               }
             }}
           />
-          <textarea
+          <SkillMentionTextarea
             value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder={expanded ? "Add description..." : "Add description..."}
+            onChange={setDescription}
+            attachedSkillIds={attachedSkillIds}
+            onAttachedSkillIdsChange={setAttachedSkillIds}
+            skills={skills}
+            placeholder={expanded ? "Add description… type @ to attach skills" : "Add description… type @ for skills"}
             rows={expanded ? 8 : 2}
-            className="w-full resize-none bg-transparent text-sm leading-relaxed text-muted-foreground outline-none placeholder:text-muted-foreground"
           />
         </div>
 
@@ -333,15 +443,17 @@ export function NewTaskDialog({
             </DropdownMenuContent>
           </SelectablePill>
 
-          <SelectablePill trigger={<MetadataPill icon={RiPriceTag3Line} label={typeLabel} active />}>
-            <DropdownMenuContent align="start" className="z-200 min-w-[180px]">
-              {ACTIVITY_TYPES.map((option) => (
+          <SelectablePill trigger={<MetadataPill icon={RiPriceTag3Line} label={categoryLabel} active />}>
+            <DropdownMenuContent align="start" className="z-200 max-h-80 min-w-[320px] overflow-y-auto">
+              {ACTIVITY_CATEGORIES.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
                   onClick={() => setActivityType(option.value)}
                   className="gap-2"
                 >
-                  <span className="flex-1">{option.label}</span>
+                  <span className="flex-1">
+                    {option.letter} · {option.label}
+                  </span>
                   {activityType === option.value ? (
                     <RiCheckLine className="size-3.5 text-muted-foreground" />
                   ) : null}
@@ -352,7 +464,11 @@ export function NewTaskDialog({
 
           <SelectablePill
             trigger={
-              <MetadataPill icon={RiBuildingLine} label={selectedClientName} active />
+              <MetadataPill
+                icon={RiBuildingLine}
+                label={selectedClientName}
+                active={Boolean(clientId)}
+              />
             }
           >
             <DropdownMenuContent align="start" className="z-200 min-w-[220px]">
@@ -371,40 +487,33 @@ export function NewTaskDialog({
             </DropdownMenuContent>
           </SelectablePill>
 
-          <SelectablePill
-            trigger={
-              <MetadataPill
-                icon={RiCalendarLine}
-                label={startDate ? startDate : "Start date"}
-                active={Boolean(startDate)}
-              />
-            }
-          >
-            <DropdownMenuContent align="start" className="z-200 p-3">
-              <div className="flex flex-col gap-2">
-                <p className="text-xs text-muted-foreground">Start date</p>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(event) => setStartDate(event.target.value)}
-                  className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground outline-none"
-                />
-                {startDate ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 justify-start px-2 text-xs"
-                    onClick={() => setStartDate("")}
-                  >
-                    Clear date
-                  </Button>
-                ) : null}
-              </div>
-            </DropdownMenuContent>
-          </SelectablePill>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={startDate}
+            onChange={(event) => setStartDate(event.target.value)}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+          />
+          <MetadataPill
+            icon={RiCalendarLine}
+            label={startDate ? `${startDate} ${startTime}` : "Start date"}
+            active={Boolean(startDate)}
+            onClick={openStartDatePicker}
+          />
+          {startDate ? (
+            <button
+              type="button"
+              className="inline-flex size-7 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Clear start date"
+              onClick={() => setStartDate("")}
+            >
+              <RiCloseLine className="size-3.5" />
+            </button>
+          ) : null}
 
-          <SelectablePill trigger={<MetadataPill icon={RiLoopLeftLine} label={recurrenceLabel} />}>
+          <SelectablePill trigger={<MetadataPill icon={RiLoopLeftLine} label={recurrenceLabel} active={recurrence !== "none"} />}>
             <DropdownMenuContent align="start" className="z-200 min-w-[180px]">
               {ACTIVITY_RECURRENCE.map((option) => (
                 <DropdownMenuItem
@@ -418,6 +527,49 @@ export function NewTaskDialog({
                   ) : null}
                 </DropdownMenuItem>
               ))}
+            </DropdownMenuContent>
+          </SelectablePill>
+
+          <input
+            ref={timeInputRef}
+            type="time"
+            value={startTime}
+            onChange={(event) => setStartTime(event.target.value)}
+            className="sr-only"
+            tabIndex={-1}
+            aria-label="Start time"
+          />
+          <MetadataPill
+            icon={RiTimeLine}
+            label={formatTimeLabel(startTime)}
+            active={Boolean(startTime)}
+            onClick={openStartTimePicker}
+          />
+
+          <SelectablePill
+            trigger={
+              <MetadataPill
+                icon={RiGlobalLine}
+                label={timezoneLabel}
+                active={Boolean(timezone)}
+              />
+            }
+          >
+            <DropdownMenuContent align="start" className="z-200 max-h-80 min-w-[240px] overflow-y-auto">
+              {[timezone, ...COMMON_TIMEZONES]
+                .filter((value, index, array) => array.indexOf(value) === index)
+                .map((value) => (
+                  <DropdownMenuItem
+                    key={value}
+                    onClick={() => setTimezone(value)}
+                    className="gap-2"
+                  >
+                    <span className="flex-1">{value}</span>
+                    {timezone === value ? (
+                      <RiCheckLine className="size-3.5 text-muted-foreground" />
+                    ) : null}
+                  </DropdownMenuItem>
+                ))}
             </DropdownMenuContent>
           </SelectablePill>
         </div>

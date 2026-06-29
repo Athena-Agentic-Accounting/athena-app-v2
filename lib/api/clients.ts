@@ -7,11 +7,71 @@ export type ClientMemberRole =
   | "client_reviewer"
   | "client_observer"
 
+/** Engine list/detail integration entry — `GET /api/clients`. */
+export type ApiClientIntegration = {
+  provider: string
+  category?: string
+  status?: string
+  accountEmail?: string
+  account_email?: string
+  companyId?: string
+  company_id?: string
+  connectedAt?: string
+  connected_at?: string
+  lastSyncAt?: string
+  last_sync_at?: string
+}
+
+export type ApiClientConnection = ApiClientIntegration & {
+  connected?: boolean
+}
+
+export type ApiClientActivityCounts = Record<string, number>
+
+export type ApiClientActivity = {
+  id: string
+  name: string
+  type?: string
+  status?: string
+  updatedAt?: string
+  updated_at?: string
+  createdAt?: string
+  created_at?: string
+  completedAt?: string
+  completed_at?: string
+}
+
+export type ApiClientConnectorConfig = {
+  scopes?: string
+  folderId?: string | null
+  accountEmail?: string
+  tokenExpiresAt?: string
+  companyId?: string
+}
+
+/** Engine detail connector — `GET /api/clients/:id`. */
+export type ApiClientConnector = {
+  id: string
+  name?: string
+  provider: string
+  category?: string
+  enabled?: boolean
+  config?: ApiClientConnectorConfig
+}
+
 export type ApiClient = {
   id: string
   name: string
+  organizationId?: string
+  status?: string
   integrationHealth?: string
+  integrations?: ApiClientIntegration[]
+  qboConnection?: ApiClientConnection
+  driveConnection?: ApiClientConnection
   activityCount?: number
+  activityCounts?: ApiClientActivityCounts
+  activeActivityCount?: number
+  teamCount?: number
   pendingApprovals?: number
 }
 
@@ -19,18 +79,53 @@ export type ApiClientDetail = ApiClient & {
   members?: Array<{
     id: string
     email: string
-    role: ClientMemberRole
+    name?: string
+    role: ClientMemberRole | string
   }>
-  connections?: Array<{
-    provider: string
-    connected: boolean
-  }>
-  activities?: Array<{
-    id: string
-    name: string
-    type?: string
-    status?: string
-  }>
+  connectors?: ApiClientConnector[]
+  connections?: ApiClientConnection[]
+  activities?: ApiClientActivity[]
+}
+
+type ApiClientDetailResponse = {
+  client: ApiClient
+  members?: ApiClientDetail["members"]
+  connectors?: ApiClientConnector[]
+  connections?: ApiClientConnection[]
+  activities?: ApiClientActivity[]
+}
+
+const COMPLETED_ACTIVITY_STATUSES = new Set(["completed", "complete"])
+
+function countActiveActivities(activities?: ApiClientActivity[]): number | undefined {
+  if (!activities?.length) return undefined
+  return activities.filter(
+    (activity) => !COMPLETED_ACTIVITY_STATUSES.has((activity.status ?? "").toLowerCase()),
+  ).length
+}
+
+function normalizeClientDetail(
+  data: ApiClientDetailResponse | ApiClientDetail | { client?: ApiClientDetail },
+): ApiClientDetail {
+  if ("client" in data && data.client) {
+    const wrapped = data as ApiClientDetailResponse
+    const activeFromActivities = countActiveActivities(wrapped.activities)
+
+    return {
+      ...wrapped.client,
+      members: wrapped.members ?? [],
+      connectors: wrapped.connectors ?? [],
+      connections: wrapped.connections ?? wrapped.client.connections,
+      activities: wrapped.activities ?? [],
+      activeActivityCount:
+        wrapped.client.activeActivityCount ??
+        activeFromActivities ??
+        wrapped.client.activityCount,
+      teamCount: wrapped.client.teamCount ?? wrapped.members?.length ?? 0,
+    }
+  }
+
+  return data as ApiClientDetail
 }
 
 export const CLIENT_MEMBER_ROLES: ClientMemberRole[] = [
@@ -40,9 +135,9 @@ export const CLIENT_MEMBER_ROLES: ClientMemberRole[] = [
 ]
 
 export const CLIENT_MEMBER_ROLE_LABELS: Record<ClientMemberRole, string> = {
-  client_manager: "Manager",
-  client_reviewer: "Reviewer",
-  client_observer: "Observer",
+  client_manager: "Client Manager",
+  client_reviewer: "Client Reviewer",
+  client_observer: "Client Observer",
 }
 
 /** Backend accepts manager/reviewer/observer or client_* variants. */
@@ -89,13 +184,11 @@ export async function getClient(
   token: string | null,
   clientId: string,
 ): Promise<ApiClientDetail> {
-  const data = await backendRequest<{ client?: ApiClientDetail } | ApiClientDetail>(
-    `/api/clients/${encodeURIComponent(clientId)}`,
-    { token },
-  )
+  const data = await backendRequest<
+    ApiClientDetailResponse | ApiClientDetail | { client?: ApiClientDetail }
+  >(`/api/clients/${encodeURIComponent(clientId)}`, { token })
 
-  if ("client" in data && data.client) return data.client
-  return data as ApiClientDetail
+  return normalizeClientDetail(data)
 }
 
 export async function createClient(

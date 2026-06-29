@@ -23,6 +23,21 @@ export function parseStreamEvent(
   const type = record.type
   const data = record.data ?? record.payload
   if (typeof type === "string" && data && typeof data === "object") {
+    const dataRecord = data as Record<string, unknown>
+    if (type === "message" || type === "assistant_message" || type === "assistant") {
+      const markdown = String(
+        dataRecord.content ?? dataRecord.text ?? dataRecord.markdown ?? dataRecord.body ?? "",
+      )
+      if (markdown.trim()) {
+        return {
+          id: String(record.id ?? record.eventId ?? crypto.randomUUID()),
+          activityId: String(record.activityId ?? record.activity_id ?? fallbackActivityId),
+          timestamp: typeof record.timestamp === "string" ? record.timestamp : undefined,
+          event: { type: "narrative", data: { markdown } },
+        }
+      }
+    }
+
     return {
       id: String(record.id ?? record.eventId ?? crypto.randomUUID()),
       activityId: String(record.activityId ?? record.activity_id ?? fallbackActivityId),

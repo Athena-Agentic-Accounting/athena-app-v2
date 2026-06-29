@@ -12,6 +12,10 @@ export type ApiSkill = {
   is_custom?: boolean
   requiredIntegrations?: string[]
   required_integrations?: string[]
+  expectedOutputs?: string[]
+  expected_outputs?: string[]
+  approvalGates?: string[]
+  approval_gates?: string[]
 }
 
 export type CreateSkillRequest = {

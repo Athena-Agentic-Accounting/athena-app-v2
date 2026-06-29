@@ -1,6 +1,6 @@
 export function unwrapList<T>(
   data: unknown,
-  keys: string[] = ["items", "queue", "approvals", "notifications", "skills", "activities", "messages"],
+  keys: string[] = ["items", "queue", "approvals", "notifications", "skills", "activities", "messages", "schedules", "runs"],
 ): T[] {
   if (!data) return []
   if (Array.isArray(data)) return data as T[]

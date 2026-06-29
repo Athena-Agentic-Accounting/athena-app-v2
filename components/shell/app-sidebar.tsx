@@ -21,9 +21,10 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
+import { useTenantConfig } from "@/hooks/use-tenant-config"
 import {
+  getVisibleNavItems,
   isNavItemActive,
-  MAIN_NAV_ITEMS,
   RECENT_NAV_ITEMS,
 } from "@/lib/navigation/sidebar-nav"
 import { cn } from "@/lib/utils"
@@ -39,6 +40,8 @@ function AthenaLogo() {
 export function AppSidebar() {
   const pathname = usePathname()
   const { allCount } = useActivityBoard()
+  const { isInHouse } = useTenantConfig()
+  const navItems = getVisibleNavItems({ isInHouse })
 
   return (
     <Sidebar
@@ -56,7 +59,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {MAIN_NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const active = isNavItemActive(pathname, item)
                 const Icon = item.icon
                 const badge =

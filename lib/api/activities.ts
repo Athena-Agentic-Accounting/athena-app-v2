@@ -5,9 +5,11 @@ import type {
   ActivityPromptResponse,
   ActivityRecord,
   CreateActivityRequest,
+  CreateActivityResult,
+  UpdateActivityRequest,
   UpdateActivityStatusRequest,
 } from "@/lib/activities/types"
-import type { ActivityStreamEvent } from "@/lib/genui/types"
+import type { ScheduleRecord } from "@/lib/schedules/types"
 import { getApiBaseUrl } from "@/lib/api/config"
 import { backendAuthHeaders } from "@/lib/api/headers"
 import { unwrapList, unwrapRecord } from "@/lib/api/unwrap"
@@ -25,17 +27,28 @@ export async function getActivityBoard(
 export async function createActivity(
   token: string | null,
   body: CreateActivityRequest,
-): Promise<ActivityRecord> {
-  const data = await backendRequest<{ activity?: ActivityRecord } | ActivityRecord>(
-    "/api/activities",
-    {
-      method: "POST",
-      token,
-      body,
-    },
-  )
+): Promise<CreateActivityResult> {
+  const data = await backendRequest<
+    | { activity?: ActivityRecord; schedule?: ScheduleRecord }
+    | ActivityRecord
+    | ScheduleRecord
+  >("/api/activities", {
+    method: "POST",
+    token,
+    body,
+  })
 
-  return unwrapRecord(data, ["activity"])
+  if (data && typeof data === "object" && "schedule" in data && data.schedule) {
+    return {
+      kind: "schedule",
+      schedule: unwrapRecord<ScheduleRecord>(data, ["schedule"]),
+    }
+  }
+
+  return {
+    kind: "activity",
+    activity: unwrapRecord<ActivityRecord>(data, ["activity"]),
+  }
 }
 
 export async function submitActivityPrompt(
@@ -68,6 +81,23 @@ export async function getActivityAudit(
   return backendRequest(`/api/activities/${encodeURIComponent(activityId)}/audit`, {
     token,
   })
+}
+
+export async function updateActivity(
+  token: string | null,
+  activityId: string,
+  body: UpdateActivityRequest,
+): Promise<ActivityRecord> {
+  const data = await backendRequest<{ activity?: ActivityRecord } | ActivityRecord>(
+    `/api/activities/${encodeURIComponent(activityId)}`,
+    {
+      method: "PATCH",
+      token,
+      body,
+    },
+  )
+
+  return unwrapRecord(data, ["activity"])
 }
 
 export async function updateActivityStatus(
@@ -138,9 +168,22 @@ export async function postActivityMessage(
 }
 
 export type ActivityStreamHandlers = {
-  onEvent: (event: ActivityStreamEvent) => void
+  onEvent: (event: unknown) => void
   onError?: (error: Error) => void
   onOpen?: () => void
+  onDone?: () => void
+}
+
+function extractSseDataPayloads(chunk: string): string[] {
+  const payloads: string[] = []
+
+  for (const line of chunk.split(/\r?\n/)) {
+    if (!line.startsWith("data:")) continue
+    const payload = line.replace(/^data:\s?/, "").trim()
+    if (payload) payloads.push(payload)
+  }
+
+  return payloads
 }
 
 /** Subscribe to live GenUI SSE events for an activity. Returns an abort function. */
@@ -158,6 +201,7 @@ export function subscribeActivityStream(
         headers: {
           ...backendAuthHeaders(token),
           Accept: "text/event-stream",
+          "Cache-Control": "no-cache",
         },
         signal: controller.signal,
       })
@@ -177,26 +221,23 @@ export function subscribeActivityStream(
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
-        const chunks = buffer.split("\n\n")
+        const chunks = buffer.split(/\r?\n\r?\n/)
         buffer = chunks.pop() ?? ""
 
         for (const chunk of chunks) {
-          const dataLine = chunk
-            .split("\n")
-            .find((line) => line.startsWith("data:"))
-          if (!dataLine) continue
+          for (const payload of extractSseDataPayloads(chunk)) {
+            if (payload === "[DONE]") continue
 
-          const payload = dataLine.replace(/^data:\s?/, "")
-          if (!payload || payload === "[DONE]") continue
-
-          try {
-            const parsed = JSON.parse(payload) as ActivityStreamEvent
-            handlers.onEvent(parsed)
-          } catch {
-            // ignore malformed chunks
+            try {
+              handlers.onEvent(JSON.parse(payload) as unknown)
+            } catch {
+              handlers.onEvent({ type: "narrative", data: { markdown: payload } })
+            }
           }
         }
       }
+
+      handlers.onDone?.()
     } catch (err) {
       if (controller.signal.aborted) return
       handlers.onError?.(err instanceof Error ? err : new Error(String(err)))

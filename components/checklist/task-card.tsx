@@ -1,7 +1,7 @@
 "use client"
 
 import type { DraggableAttributes } from "@dnd-kit/core"
-import { CalendarIcon } from "lucide-react"
+import { Building2, CalendarIcon } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +22,7 @@ type TaskCardProps = {
   task: ChecklistTask
   onClick?: () => void
   isDragging?: boolean
+  showClientTag?: boolean
   dragHandleProps?: {
     attributes: DraggableAttributes
     listeners: Record<string, Function> | undefined
@@ -32,6 +33,7 @@ export function TaskCard({
   task,
   onClick,
   isDragging = false,
+  showClientTag = false,
   dragHandleProps,
 }: TaskCardProps) {
   return (
@@ -63,6 +65,15 @@ export function TaskCard({
           <Badge variant="outline" className="rounded-md font-normal text-muted-foreground">
             {task.category}
           </Badge>
+          {showClientTag && task.clientName ? (
+            <Badge
+              variant="outline"
+              className="max-w-[160px] gap-1 truncate rounded-md font-normal text-muted-foreground"
+            >
+              <Building2 className="size-3 shrink-0" />
+              <span className="truncate">{task.clientName}</span>
+            </Badge>
+          ) : null}
         </div>
 
         <div className="flex items-center justify-between">

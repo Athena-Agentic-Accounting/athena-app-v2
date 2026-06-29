@@ -7,6 +7,8 @@ export type ChecklistTask = {
   category: string
   dueDate: string
   assignees: string[]
+  clientId?: string
+  clientName?: string
 }
 
 export const CHECKLIST_COLUMNS: {

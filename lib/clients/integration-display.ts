@@ -8,7 +8,7 @@ export function normalizeIntegrationProvider(
   provider: string,
 ): IntegrationProvider | null {
   const value = provider.toLowerCase().replace(/-/g, "_")
-  if (value === "quickbooks" || value === "quickbooks_online") {
+  if (value === "quickbooks" || value === "quickbooks_online" || value === "qbo") {
     return "quickbooks"
   }
   if (value === "google_drive") {

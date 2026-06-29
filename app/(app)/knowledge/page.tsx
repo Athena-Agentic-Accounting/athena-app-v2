@@ -1,5 +1,5 @@
-import { KnowledgeView } from "@/components/knowledge/knowledge-view"
+import { redirect } from "next/navigation"
 
 export default function KnowledgePage() {
-  return <KnowledgeView />
+  redirect("/skills")
 }

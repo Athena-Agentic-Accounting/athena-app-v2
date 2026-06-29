@@ -21,9 +21,12 @@ type SessionWorkspaceViewProps = {
   showPlanAction?: boolean
   streamStatus?: UseActivitySessionReturn["streamStatus"]
   isSending?: boolean
+  isAwaitingResponse?: boolean
   onSendMessage?: (content: string) => Promise<void>
   onPlanDecision?: (decision: PlanReviewDecision, gateId?: string) => void | Promise<void>
   onApprovalDecision?: UseActivitySessionReturn["handleApprovalDecision"]
+  onEditActivity?: () => void
+  activityLocked?: boolean
   onClose?: () => void
   className?: string
 }
@@ -39,9 +42,12 @@ export function SessionWorkspaceView({
   showPlanAction = false,
   streamStatus,
   isSending,
+  isAwaitingResponse,
   onSendMessage,
   onPlanDecision,
   onApprovalDecision,
+  onEditActivity,
+  activityLocked = false,
   onClose,
   className,
 }: SessionWorkspaceViewProps) {
@@ -74,14 +80,21 @@ export function SessionWorkspaceView({
         showPlanAction={showPlanAction}
         streamStatus={streamStatus}
         isSending={isSending}
+        isAwaitingResponse={isAwaitingResponse}
         onSendMessage={onSendMessage}
         onApprovalDecision={onApprovalDecision}
+        onEditActivity={onEditActivity}
+        activityLocked={activityLocked}
         onViewPlan={() => {
           setShowArtifact(true)
           setActiveTabId(planTabId)
         }}
         onClose={onClose}
-        className={showArtifact && artifact ? undefined : "w-full max-w-none border-l-0"}
+        className={
+          showArtifact && artifact
+            ? "w-[min(100%,24rem)] shrink-0"
+            : "border-l-0"
+        }
       />
     </div>
   )

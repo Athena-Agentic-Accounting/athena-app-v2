@@ -6,6 +6,7 @@ import { RiDownloadLine, RiGroupLine } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { ClientDetailContent } from "@/components/clients/client-detail-content"
+import { ClientsGuard } from "@/components/clients/clients-guard"
 import { useClient } from "@/components/providers/client-provider"
 import { PageHeader } from "@/components/shell/page-header"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { downloadClientAuditExport, getClient, type ApiClientDetail } from "@/lib/api/clients"
+import {
+  downloadClientAuditExport,
+  getClient,
+  type ApiClientDetail,
+} from "@/lib/api/clients"
 
 type ClientDetailViewProps = {
   clientId: string
@@ -81,58 +86,59 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
   const clientName = detail?.name ?? "Client"
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <PageHeader
-        title={clientName}
-        description="Integrations, team access, and audit exports"
-        icon={RiGroupLine}
-        breadcrumbs={[
-          { label: "Clients", href: "/clients" },
-          { label: clientName },
-        ]}
-        showSearch={false}
-        showNotifications={false}
-        actions={
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 gap-1.5 px-4 text-xs"
-                disabled={exportingAudit || loading || !detail}
-                onClick={() => void handleAuditExport()}
-              >
-                {exportingAudit ? (
-                  <Spinner className="size-3.5" />
-                ) : (
-                  <RiDownloadLine className="size-3.5" />
-                )}
-                Download audit export
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs text-xs">
-              JSON export of client-scoped audit events. Requires reviewer access or higher.
-            </TooltipContent>
-          </Tooltip>
-        }
-      />
+    <ClientsGuard>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+        <PageHeader
+          title={clientName}
+          icon={RiGroupLine}
+          breadcrumbs={[
+            { label: "Clients", href: "/clients" },
+            { label: clientName },
+          ]}
+          showSearch={false}
+          showNotifications={false}
+          actions={
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 px-4 text-xs"
+                  disabled={exportingAudit || loading || !detail}
+                  onClick={() => void handleAuditExport()}
+                >
+                  {exportingAudit ? (
+                    <Spinner className="size-3.5" />
+                  ) : (
+                    <RiDownloadLine className="size-3.5" />
+                  )}
+                  Download audit export
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-xs">
+                JSON export of client-scoped audit events. Requires reviewer access or higher.
+              </TooltipContent>
+            </Tooltip>
+          }
+        />
 
-      <div className="min-h-0 flex-1 overflow-auto bg-background p-5">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Spinner className="size-5 text-muted-foreground" />
-          </div>
-        ) : detail ? (
-          <ClientDetailContent
-            clientId={clientId}
-            detail={detail}
-            onUpdated={handleUpdated}
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">Client not found.</p>
-        )}
+        <div className="min-h-0 flex-1 overflow-auto bg-background p-5">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="size-5 text-muted-foreground" />
+            </div>
+          ) : detail ? (
+            <ClientDetailContent
+              clientId={clientId}
+              detail={detail}
+              onUpdated={handleUpdated}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">Client not found.</p>
+          )}
+        </div>
       </div>
-    </div>
+    </ClientsGuard>
   )
 }

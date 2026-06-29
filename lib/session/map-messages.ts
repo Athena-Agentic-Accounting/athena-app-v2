@@ -11,9 +11,9 @@ export function mapActivityMessages(messages: ActivityMessage[]): SessionChatMes
     .map((message, index) => ({
       id: message.id ?? `message-${index}`,
       role: normalizeRole(message.role),
-      content: message.content,
+      content: (message.content ?? message.text ?? message.body ?? "").trim(),
     }))
-    .filter((message) => message.content.trim().length > 0)
+    .filter((message) => message.content.length > 0)
 }
 
 function normalizeRole(role?: string): SessionChatMessage["role"] {
