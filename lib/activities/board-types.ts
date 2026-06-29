@@ -1,9 +1,18 @@
 export type ActivityBoardStatus =
+  // Current lifecycle (backend.md T4)
+  | "draft"
+  | "plan_pending"
+  | "plan_approved"
+  | "scheduled"
+  | "executing"
+  | "awaiting_input"
+  | "completed"
+  | "rejected"
+  // Legacy names — kept so historical rows still render
   | "to_do"
   | "in_progress"
   | "needs_attention"
   | "in_review"
-  | "completed"
   | string
 
 export type BoardActivity = {
