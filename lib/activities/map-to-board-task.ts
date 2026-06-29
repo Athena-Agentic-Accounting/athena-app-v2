@@ -1,34 +1,32 @@
-import { formatActivityCategory } from "@/lib/activities/categories"
-import type { ActivityRecord } from "@/lib/activities/types"
-import type { ChecklistTask, TaskStatus } from "@/lib/checklist/mock-tasks"
+import { formatActivityCategory } from "@/lib/activities/categories";
+import type { ActivityRecord } from "@/lib/activities/types";
+import type { ChecklistTask, TaskStatus } from "@/lib/checklist/mock-tasks";
 
 const STATUS_MAP: Record<string, TaskStatus> = {
-  // Current lifecycle (backend.md T4)
   draft: "to-do",
-  plan_approved: "to-do",
+  plan_pending: "in-review",
+  plan_approved: "in-review",
   scheduled: "to-do",
-  plan_pending: "needs-action",
   executing: "needs-action",
   awaiting_input: "needs-action",
-  rejected: "needs-action",
   completed: "complete",
-  // Legacy names — historical rows still render
+  rejected: "needs-action",
   to_do: "to-do",
   in_progress: "needs-action",
   needs_attention: "needs-action",
   in_review: "in-review",
-}
+};
 
 function formatStartDate(value?: string): string {
-  if (!value) return "—"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export function mapActivityStatus(status?: string): TaskStatus {
-  if (!status) return "to-do"
-  return STATUS_MAP[status] ?? "to-do"
+  if (!status) return "to-do";
+  return STATUS_MAP[status] ?? "to-do";
 }
 
 export function mapActivityToChecklistTask(
@@ -44,5 +42,5 @@ export function mapActivityToChecklistTask(
     assignees: [],
     clientId: activity.clientId,
     clientName: options?.clientName,
-  }
+  };
 }

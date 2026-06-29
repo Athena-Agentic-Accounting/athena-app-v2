@@ -1,29 +1,34 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-import { EditActivityDialog } from "@/components/session/edit-activity-dialog"
-import { SessionWorkspaceView } from "@/components/session/session-workspace-view"
-import { Spinner } from "@/components/ui/spinner"
-import { useActivitySession } from "@/hooks/use-activity-session"
+import { EditActivityDialog } from "@/components/session/edit-activity-dialog";
+import { SessionWorkspaceView } from "@/components/session/session-workspace-view";
+import { Spinner } from "@/components/ui/spinner";
+import { useActivitySession } from "@/hooks/use-activity-session";
+import { useActivitySessionRegistration } from "@/hooks/use-activity-session-registry";
 
 type ActivitySessionViewProps = {
-  activityId: string
-  initialPrompt?: string | null
-}
+  activityId: string;
+  initialPrompt?: string | null;
+};
 
-export function ActivitySessionView({ activityId, initialPrompt }: ActivitySessionViewProps) {
-  const router = useRouter()
-  const session = useActivitySession(activityId, initialPrompt)
-  const [editOpen, setEditOpen] = useState(false)
+export function ActivitySessionView({
+  activityId,
+  initialPrompt,
+}: ActivitySessionViewProps) {
+  const router = useRouter();
+  useActivitySessionRegistration(activityId);
+  const session = useActivitySession(activityId, initialPrompt);
+  const [editOpen, setEditOpen] = useState(false);
 
   if (session.isLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-background">
         <Spinner className="size-5 text-muted-foreground" />
       </div>
-    )
+    );
   }
 
   return (
@@ -54,5 +59,5 @@ export function ActivitySessionView({ activityId, initialPrompt }: ActivitySessi
         onUpdated={() => void session.refreshActivity()}
       />
     </>
-  )
+  );
 }
