@@ -218,16 +218,27 @@ export function useActivitySession(
           if (cancelled) return;
           const parsed = parseStreamEvent(raw, activityIdRef.current);
           if (!parsed) return;
-          setIsAwaitingResponse(false);
+
+          // If the event is a gate or question, the agent has paused to wait for human input.
+          if (
+            parsed.event.type === "approval_gate" ||
+            parsed.event.type === "attention_required" ||
+            parsed.event.type === "question_choice"
+          ) {
+            setIsAwaitingResponse(false);
+          }
+
           setStreamEvents((current) => mergeStreamEvents(current, parsed));
         },
         onDone: () => {
           if (cancelled) return;
+          setIsAwaitingResponse(false);
           void refreshMessages();
         },
         onError: () => {
           if (cancelled) return;
           setStreamStatus("error");
+          setIsAwaitingResponse(false);
           retryTimer = window.setTimeout(() => {
             if (!cancelled) void connect();
           }, 4000);
@@ -316,6 +327,7 @@ export function useActivitySession(
       const token = await getToken();
 
       if (decision === "start_now") {
+        setIsAwaitingResponse(true);
         try {
           const result = await approveActivityPlanWithAgent(
             token,
@@ -370,6 +382,7 @@ export function useActivitySession(
       },
     ) => {
       const token = await getToken();
+      setIsAwaitingResponse(true);
       await decideAgentApproval(token, gateId, payload);
       setStreamEvents((current) =>
         current.filter((event) => {
