@@ -35,6 +35,31 @@ import {
 
 type StreamStatus = "idle" | "connecting" | "connected" | "error";
 
+function extractStreamEventsFromMessages(
+  messages: any[],
+  activityId: string,
+): ActivityStreamEvent[] {
+  const events: ActivityStreamEvent[] = [];
+  for (const msg of messages) {
+    const structured = msg.structured ?? msg.structured_;
+    if (structured && typeof structured === "object") {
+      const parsed = parseStreamEvent(
+        {
+          id: msg.id,
+          activityId: activityId,
+          timestamp: msg.createdAt ?? msg.created_at,
+          event: structured,
+        },
+        activityId,
+      );
+      if (parsed) {
+        events.push(parsed);
+      }
+    }
+  }
+  return events;
+}
+
 export function useActivitySession(
   activityId: string,
   initialPrompt?: string | null,
@@ -79,6 +104,7 @@ export function useActivitySession(
 
         setActivity(record);
         setMessages(mapActivityMessages(sortMessagesByCreatedAt(rawMessages)));
+        setStreamEvents(extractStreamEventsFromMessages(rawMessages, activityIdRef.current));
       } catch (err) {
         if (!cancelled) {
           toast.error("Could not load activity session", {
@@ -104,6 +130,20 @@ export function useActivitySession(
     );
     const mapped = mapActivityMessages(items);
     setMessages(mapped);
+
+    const initialEvents = extractStreamEventsFromMessages(items, activityIdRef.current);
+    setStreamEvents((current) => {
+      const updated = [...current];
+      for (const incoming of initialEvents) {
+        const index = updated.findIndex((event) => event.id === incoming.id);
+        if (index === -1) {
+          updated.push(incoming);
+        } else {
+          updated[index] = incoming;
+        }
+      }
+      return updated;
+    });
 
     const assistantCount = mapped.filter(
       (message) => message.role === "assistant",

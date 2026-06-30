@@ -4,6 +4,13 @@ import type { SessionArtifact } from "@/lib/session/types"
 export function buildArtifactFromStreamEvents(
   events: ActivityStreamEvent[],
 ): SessionArtifact | undefined {
+  // Plan checklist emitted by the AI server after plan submission
+  const planChecklist = events.find(
+    (event) =>
+      event.event.type === "checklist" &&
+      /plan/i.test(event.event.data.title ?? ""),
+  )
+
   const planNarrative = events.find(
     (event) =>
       event.event.type === "narrative" &&
@@ -17,12 +24,20 @@ export function buildArtifactFromStreamEvents(
         planNarrative !== undefined),
   )
 
-  if (!planNarrative && !planTable) return undefined
+  if (!planChecklist && !planNarrative && !planTable) return undefined
 
-  const markdown =
-    planNarrative?.event.type === "narrative"
-      ? planNarrative.event.data.markdown
-      : "# Plan\n\nReview the generated plan below."
+  // Build markdown from checklist items if no narrative is present
+  let markdown: string
+  if (planNarrative?.event.type === "narrative") {
+    markdown = planNarrative.event.data.markdown
+  } else if (planChecklist?.event.type === "checklist") {
+    const items = planChecklist.event.data.items
+    const title = planChecklist.event.data.title ?? "Proposed Plan"
+    const lines = items.map((item) => `- ${item.label}`)
+    markdown = `# ${title}\n\n${lines.join("\n")}`
+  } else {
+    markdown = "# Plan\n\nReview the generated plan below."
+  }
 
   const table =
     planTable?.event.type === "table" ? planTable.event.data : undefined
@@ -42,6 +57,7 @@ export function buildArtifactFromStreamEvents(
     ],
   }
 }
+
 
 export function extractThoughtsFromStream(events: ActivityStreamEvent[]) {
   return events
