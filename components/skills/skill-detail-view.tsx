@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
-import { RiArrowLeftLine, RiBookOpenLine } from "@remixicon/react"
+import { RiArrowLeftLine, RiBookOpenLine, RiPencilLine } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { SkillMarkdownLayout } from "@/components/skills/skill-markdown-layout"
@@ -16,8 +16,8 @@ import { Spinner } from "@/components/ui/spinner"
 import { useWorkspacePermissions } from "@/hooks/use-workspace-permissions"
 import {
   deleteSkill,
+  getSkill,
   isCustomSkill,
-  listSkills,
   type ApiSkill,
 } from "@/lib/api/skills"
 import { buildSkillMarkdown, getRequiredIntegrations } from "@/lib/skills/skill-markdown"
@@ -38,9 +38,8 @@ export function SkillDetailView({ skillId }: SkillDetailViewProps) {
     setLoading(true)
     try {
       const token = await getToken()
-      const items = await listSkills(token)
-      const match = items.find((entry) => entry.id === skillId) ?? null
-      setSkill(match)
+      const item = await getSkill(token, skillId)
+      setSkill(item)
     } catch (err) {
       setSkill(null)
       toast.error("Could not load skill", {
@@ -136,6 +135,14 @@ export function SkillDetailView({ skillId }: SkillDetailViewProps) {
                 Back
               </Link>
             </Button>
+            {canManageSkills ? (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/skills/${skill.id}/edit`}>
+                  <RiPencilLine className="size-3.5" />
+                  Edit
+                </Link>
+              </Button>
+            ) : null}
             {custom && canManageSkills ? (
               <Button
                 type="button"

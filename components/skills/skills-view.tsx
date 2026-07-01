@@ -66,7 +66,6 @@ export function SkillsView() {
         skill.name,
         skill.category,
         skill.description,
-        skill.sourceText ?? skill.source_text,
         ...getRequiredIntegrations(skill),
       ]
         .filter(Boolean)
