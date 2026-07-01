@@ -216,6 +216,32 @@ export function useActivitySession(
         },
         onEvent: (raw) => {
           if (cancelled) return;
+
+          const record = raw && typeof raw === "object" ? (raw as Record<string, any>) : null;
+          const eventType = record?.event?.type ?? record?.type;
+
+          if (eventType === "message") {
+            const data = record?.event?.data ?? record?.data;
+            if (data) {
+              const msgId = String(record?.id ?? record?.eventId ?? crypto.randomUUID());
+              setMessages((current) => {
+                if (current.some((m) => m.id === msgId)) return current;
+                return [
+                  ...current,
+                  {
+                    id: msgId,
+                    role: data.role,
+                    content: data.content,
+                  },
+                ];
+              });
+              if (data.role === "assistant") {
+                setIsAwaitingResponse(false);
+              }
+            }
+            return;
+          }
+
           const parsed = parseStreamEvent(raw, activityIdRef.current);
           if (!parsed) return;
 
@@ -238,7 +264,6 @@ export function useActivitySession(
         onError: () => {
           if (cancelled) return;
           setStreamStatus("error");
-          setIsAwaitingResponse(false);
           retryTimer = window.setTimeout(() => {
             if (!cancelled) void connect();
           }, 4000);
