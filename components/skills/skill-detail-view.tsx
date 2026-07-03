@@ -1,16 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
 import { RiArrowLeftLine, RiBookOpenLine, RiPencilLine } from "@remixicon/react"
 import { toast } from "sonner"
 
-import { SkillMarkdownLayout } from "@/components/skills/skill-markdown-layout"
+import { SkillDetailCard } from "@/components/skills/skill-detail-card"
 import { PageHeader } from "@/components/shell/page-header"
-import { MarkdownContent } from "@/components/session/markdown-content"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { useWorkspacePermissions } from "@/hooks/use-workspace-permissions"
@@ -20,7 +18,6 @@ import {
   isCustomSkill,
   type ApiSkill,
 } from "@/lib/api/skills"
-import { buildSkillMarkdown, getRequiredIntegrations } from "@/lib/skills/skill-markdown"
 
 type SkillDetailViewProps = {
   skillId: string
@@ -53,8 +50,6 @@ export function SkillDetailView({ skillId }: SkillDetailViewProps) {
   useEffect(() => {
     void loadSkill()
   }, [loadSkill])
-
-  const markdown = useMemo(() => (skill ? buildSkillMarkdown(skill) : ""), [skill])
 
   async function handleDelete() {
     if (!skill || !isCustomSkill(skill) || !canManageSkills) return
@@ -114,7 +109,7 @@ export function SkillDetailView({ skillId }: SkillDetailViewProps) {
   }
 
   const custom = isCustomSkill(skill)
-  const integrations = getRequiredIntegrations(skill)
+  const customisable = isCustomisableSkill(skill)
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -159,25 +154,17 @@ export function SkillDetailView({ skillId }: SkillDetailViewProps) {
         }
       />
 
-      <SkillMarkdownLayout>
-        <div className="mb-6 flex flex-wrap items-center gap-2">
-          <Badge variant={custom ? "default" : "outline"}>
-            {custom ? "Custom" : "Core"}
-          </Badge>
-          {skill.category ? (
-            <Badge variant="outline" className="font-normal">
-              {skill.category}
-            </Badge>
-          ) : null}
-          {integrations.length > 0 ? (
-            <span className="text-xs text-muted-foreground">
-              Requires {integrations.join(", ")}
-            </span>
+      <div className="min-h-0 flex-1 overflow-auto bg-background p-5">
+        <div className="w-full max-w-3xl">
+          <SkillDetailCard skill={skill} />
+          {!custom && customisable ? (
+            <p className="mt-4 text-xs text-muted-foreground">
+              Core skills are read-only templates. Customise by copying into your firm&apos;s
+              library when that flow is available.
+            </p>
           ) : null}
         </div>
-
-        <MarkdownContent markdown={markdown} />
-      </SkillMarkdownLayout>
+      </div>
     </div>
   )
 }

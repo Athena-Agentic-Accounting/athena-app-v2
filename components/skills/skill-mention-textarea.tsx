@@ -27,6 +27,9 @@ type SkillMentionTextareaProps = {
   textareaRef?: RefObject<HTMLTextAreaElement | null>
   onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void
   disabled?: boolean
+  showHint?: boolean
+  insertMentionInText?: boolean
+  variant?: "plain" | "field"
 }
 
 export function SkillMentionTextarea({
@@ -41,6 +44,9 @@ export function SkillMentionTextarea({
   textareaRef: externalRef,
   onKeyDown,
   disabled = false,
+  showHint = true,
+  insertMentionInText = true,
+  variant = "plain",
 }: SkillMentionTextareaProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const textareaRef = externalRef ?? internalRef
@@ -70,31 +76,52 @@ export function SkillMentionTextarea({
     (skill: ApiSkill) => {
       if (!mention) return
 
-      const insertion = `@${skill.name} `
-      const nextValue = value.slice(0, mention.start) + insertion + value.slice(mention.end)
-      onChange(nextValue)
+      if (insertMentionInText) {
+        const insertion = `@${skill.name} `
+        const nextValue = value.slice(0, mention.start) + insertion + value.slice(mention.end)
+        onChange(nextValue)
+
+        const nextCursor = mention.start + insertion.length
+        window.requestAnimationFrame(() => {
+          const element = textareaRef.current
+          if (!element) return
+          element.focus()
+          element.setSelectionRange(nextCursor, nextCursor)
+          setCursor(nextCursor)
+        })
+      } else {
+        const nextValue = `${value.slice(0, mention.start)}${value.slice(mention.end)}`.trimStart()
+        onChange(nextValue)
+        window.requestAnimationFrame(() => {
+          const element = textareaRef.current
+          if (!element) return
+          element.focus()
+          const nextCursor = nextValue.length
+          element.setSelectionRange(nextCursor, nextCursor)
+          setCursor(nextCursor)
+        })
+      }
 
       if (!attachedSkillIds.includes(skill.id)) {
         onAttachedSkillIdsChange([...attachedSkillIds, skill.id])
       }
-
-      const nextCursor = mention.start + insertion.length
-      window.requestAnimationFrame(() => {
-        const element = textareaRef.current
-        if (!element) return
-        element.focus()
-        element.setSelectionRange(nextCursor, nextCursor)
-        setCursor(nextCursor)
-      })
     },
-    [attachedSkillIds, mention, onAttachedSkillIdsChange, onChange, textareaRef, value],
+    [
+      attachedSkillIds,
+      insertMentionInText,
+      mention,
+      onAttachedSkillIdsChange,
+      onChange,
+      textareaRef,
+      value,
+    ],
   )
 
   function removeSkill(skillId: string) {
     const skill = skills.find((entry) => entry.id === skillId)
     onAttachedSkillIdsChange(attachedSkillIds.filter((id) => id !== skillId))
 
-    if (!skill) return
+    if (!skill || !insertMentionInText) return
 
     const token = `@${skill.name}`
     onChange(
@@ -139,7 +166,13 @@ export function SkillMentionTextarea({
   }
 
   return (
-    <div className="relative space-y-2">
+    <div
+      className={cn(
+        "relative space-y-2",
+        variant === "field" &&
+          "min-h-9 rounded-md border border-input bg-transparent px-2.5 py-2 shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
+      )}
+    >
       {attachedSkills.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
           {attachedSkills.map((skill) => (
@@ -181,7 +214,10 @@ export function SkillMentionTextarea({
           }
           onKeyDown={handleKeyDown}
           className={cn(
-            "w-full resize-none bg-transparent text-sm leading-relaxed text-muted-foreground outline-none placeholder:text-muted-foreground",
+            "w-full resize-none text-sm leading-relaxed outline-none",
+            variant === "field"
+              ? "min-h-8 bg-transparent text-sm text-foreground placeholder:text-muted-foreground"
+              : "bg-transparent text-muted-foreground placeholder:text-muted-foreground",
             className,
           )}
         />
@@ -216,13 +252,11 @@ export function SkillMentionTextarea({
         ) : null}
       </div>
 
-      <p className="text-[11px] text-muted-foreground">
-        {disabled ? null : (
-          <>
-            Type <span className="font-medium">@</span> to attach skills
-          </>
-        )}
-      </p>
+      {showHint && !disabled ? (
+        <p className="text-[11px] text-muted-foreground">
+          Type <span className="font-medium">@</span> to attach skills
+        </p>
+      ) : null}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { backendRequest } from "@/lib/api/backend-client"
 import { unwrapList, unwrapRecord } from "@/lib/api/unwrap"
+import type { SkillApprovalGate, SkillTaskStep } from "@/lib/skills/types"
 
 export type ApiSkill = {
   id: string
@@ -19,6 +20,12 @@ export type ApiSkill = {
   is_core?: boolean
   isCustom?: boolean
   is_custom?: boolean
+  isCore?: boolean
+  is_core?: boolean
+  isCustomisable?: boolean
+  is_customisable?: boolean
+  organizationId?: string | null
+  organization_id?: string | null
   requiredIntegrations?: string[]
   required_integrations?: string[]
 }

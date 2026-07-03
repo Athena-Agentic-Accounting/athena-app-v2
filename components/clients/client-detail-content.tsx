@@ -26,6 +26,7 @@ import {
   CLIENT_MEMBER_ROLE_LABELS,
   CLIENT_MEMBER_ROLES,
   fromApiMemberRole,
+  getMemberEmail,
   inviteClientMember,
   removeClientMember,
   type ApiClientDetail,
@@ -46,8 +47,9 @@ type ClientDetailContentProps = {
   onUpdated?: () => void
 }
 
-function getMemberDisplayName(email: string, name?: string): string {
+function getMemberDisplayName(email: string | undefined, name?: string): string {
   if (name?.trim()) return name.trim()
+  if (!email?.trim()) return "Team member"
 
   const local = email.split("@")[0] ?? email
   const parts = local.split(/[._-]+/).filter(Boolean)
@@ -227,7 +229,10 @@ export function ClientDetailContent({
             <ul className="space-y-2">
               {members.map((member) => {
                 const role = fromApiMemberRole(member.role)
-                const displayName = getMemberDisplayName(member.email, member.name)
+                const displayName = getMemberDisplayName(
+                  getMemberEmail(member) ?? undefined,
+                  member.name,
+                )
                 const isConfirming = confirmRemoveId === member.id
 
                 return (

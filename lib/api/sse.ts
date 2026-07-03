@@ -5,6 +5,28 @@ export type SseHandlers = {
   onDone?: () => void
 }
 
+export class StreamError extends Error {
+  status: number
+
+  constructor(status: number, message = `Stream failed (${status})`) {
+    super(message)
+    this.name = "StreamError"
+    this.status = status
+  }
+}
+
+export function isPermanentStreamError(error: Error): boolean {
+  if (error instanceof StreamError) {
+    return error.status === 401 || error.status === 403 || error.status === 404
+  }
+
+  const match = /Stream failed \((\d+)\)/.exec(error.message)
+  if (!match) return false
+
+  const status = Number(match[1])
+  return status === 401 || status === 403 || status === 404
+}
+
 export function extractSseDataPayloads(chunk: string): string[] {
   const payloads: string[] = []
 
@@ -22,7 +44,7 @@ export async function readSseResponse(
   handlers: SseHandlers,
 ): Promise<void> {
   if (!response.ok || !response.body) {
-    throw new Error(`Stream failed (${response.status})`)
+    throw new StreamError(response.status)
   }
 
   handlers.onOpen?.()

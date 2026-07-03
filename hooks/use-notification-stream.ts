@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { toast } from "sonner"
 
 import { subscribeNotificationStream } from "@/lib/api/notifications"
+import { isPermanentStreamError } from "@/lib/api/sse"
 import { useSessionRegistry } from "@/lib/session/session-registry"
 
 const REATTACH_STATUSES = new Set(["executing", "awaiting_input"])
@@ -22,17 +23,19 @@ type NotificationStreamEvent = {
 export function useNotificationStream(onNotification?: () => void | Promise<void>) {
   const { getToken, isSignedIn } = useAuth()
   const { attachActivitySession, markActivityNeedsInput } = useSessionRegistry()
+  const streamUnavailableRef = useRef(false)
 
   useEffect(() => {
-    if (!isSignedIn) return
+    if (!isSignedIn || streamUnavailableRef.current) return
 
     let unsubscribe: (() => void) | undefined
     let cancelled = false
     let retryTimer: number | undefined
+    let retryCount = 0
 
     async function connect() {
       const token = await getToken()
-      if (cancelled) return
+      if (cancelled || streamUnavailableRef.current) return
 
       unsubscribe?.()
       unsubscribe = subscribeNotificationStream(token, {
@@ -57,11 +60,20 @@ export function useNotificationStream(onNotification?: () => void | Promise<void
             attachActivitySession(activityId, event.status)
           }
         },
-        onError: () => {
-          if (cancelled) return
+        onError: (error) => {
+          if (cancelled || streamUnavailableRef.current) return
+
+          if (isPermanentStreamError(error)) {
+            streamUnavailableRef.current = true
+            return
+          }
+
+          retryCount += 1
+          if (retryCount > 3) return
+
           retryTimer = window.setTimeout(() => {
             if (!cancelled) void connect()
-          }, 5000)
+          }, 5000 * retryCount)
         },
       })
     }

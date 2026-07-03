@@ -78,7 +78,8 @@ export type ApiClient = {
 export type ApiClientDetail = ApiClient & {
   members?: Array<{
     id: string
-    email: string
+    email?: string
+    email_address?: string
     name?: string
     role: ClientMemberRole | string
   }>
@@ -138,6 +139,17 @@ export const CLIENT_MEMBER_ROLE_LABELS: Record<ClientMemberRole, string> = {
   client_manager: "Client Manager",
   client_reviewer: "Client Reviewer",
   client_observer: "Client Observer",
+}
+
+export function getMemberEmail(member: {
+  email?: string | null
+  email_address?: string | null
+}): string | null {
+  const raw = member.email ?? member.email_address
+  if (typeof raw !== "string") return null
+
+  const trimmed = raw.trim()
+  return trimmed ? trimmed.toLowerCase() : null
 }
 
 /** Backend accepts manager/reviewer/observer or client_* variants. */

@@ -126,14 +126,15 @@ export function ChatSessionPanel({
       ? latestProgress.event.data.stepDescription
       : thoughts.at(-1)?.text
 
-  const streamLabel =
-    streamStatus === "connected"
+  const streamLabel = isAwaitingResponse
+    ? streamStatus === "connected"
       ? "Live"
       : streamStatus === "connecting"
         ? "Connecting…"
         : streamStatus === "error"
           ? "Reconnecting…"
           : null
+    : null
 
   const typingLabel =
     progressLabel ??

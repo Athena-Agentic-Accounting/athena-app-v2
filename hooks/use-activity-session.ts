@@ -32,6 +32,7 @@ import {
   mergeStreamEvents,
   parseStreamEvent,
 } from "@/lib/session/parse-stream-event";
+import { isPermanentStreamError } from "@/lib/api/sse";
 
 type StreamStatus = "idle" | "connecting" | "connected" | "error";
 
@@ -76,10 +77,15 @@ export function useActivitySession(
 
   const activityIdRef = useRef(activityId);
   const assistantCountRef = useRef(0);
+  const isAwaitingResponseRef = useRef(isAwaitingResponse);
 
   useEffect(() => {
     activityIdRef.current = activityId;
   }, [activityId]);
+
+  useEffect(() => {
+    isAwaitingResponseRef.current = isAwaitingResponse;
+  }, [isAwaitingResponse]);
 
   useEffect(() => {
     assistantCountRef.current = messages.filter(
@@ -200,9 +206,15 @@ export function useActivitySession(
   ]);
 
   useEffect(() => {
+    if (!isAwaitingResponse) {
+      setStreamStatus("idle");
+      return;
+    }
+
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
     let retryTimer: number | undefined;
+    let retryCount = 0;
 
     async function connect() {
       setStreamStatus("connecting");
@@ -212,7 +224,10 @@ export function useActivitySession(
       unsubscribe?.();
       unsubscribe = subscribeActivityStream(token, activityIdRef.current, {
         onOpen: () => {
-          if (!cancelled) setStreamStatus("connected");
+          if (!cancelled) {
+            retryCount = 0;
+            setStreamStatus("connected");
+          }
         },
         onEvent: (raw) => {
           if (cancelled) return;
@@ -260,13 +275,32 @@ export function useActivitySession(
           if (cancelled) return;
           setIsAwaitingResponse(false);
           void refreshMessages();
+          if (isAwaitingResponseRef.current) {
+            retryTimer = window.setTimeout(() => {
+              if (!cancelled) void connect();
+            }, 1500);
+          } else {
+            setStreamStatus("idle");
+          }
         },
-        onError: () => {
+        onError: (error) => {
           if (cancelled) return;
+
+          if (isPermanentStreamError(error)) {
+            setStreamStatus("idle");
+            return;
+          }
+
+          retryCount += 1;
+          if (retryCount > 5) {
+            setStreamStatus("idle");
+            return;
+          }
+
           setStreamStatus("error");
           retryTimer = window.setTimeout(() => {
             if (!cancelled) void connect();
-          }, 4000);
+          }, 4000 * retryCount);
         },
       });
     }
@@ -278,7 +312,7 @@ export function useActivitySession(
       if (retryTimer) window.clearTimeout(retryTimer);
       unsubscribe?.();
     };
-  }, [activityId, getToken, refreshMessages]);
+  }, [activityId, getToken, isAwaitingResponse, refreshMessages]);
 
   useEffect(() => {
     if (!isAwaitingResponse) return;
