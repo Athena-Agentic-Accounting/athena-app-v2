@@ -226,6 +226,7 @@ export function useActivitySession(
         onOpen: () => {
           if (cancelled) return;
           setStreamStatus("connected");
+            retryCount = 0;
           // Backfill from the engine's durable history on every (re)connect —
           // the agent's SSE broker is fire-and-forget, so anything emitted
           // while we were disconnected only exists in the persisted messages.
