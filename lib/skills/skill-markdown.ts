@@ -19,17 +19,47 @@ export function buildSkillMarkdown(skill: ApiSkill): string {
   return `# ${skill.name}`
 }
 
-export const SKILL_MARKDOWN_PLACEHOLDER = `## Overview
+export const SKILL_BLANK_TEMPLATE = `# <Skill Name>
 
-Describe what this skill does and when an accountant should run it.
+**Category:** <CLOSE | RECONCILIATION | ONBOARDING | ...>
+**Core skill:** false
+**Customisable:** true
 
-## Steps
+## Description
+<One or two sentences: what this skill does and why a client would run it.>
 
-1. First step…
-2. Second step…
+## Required Integrations
+- QUICKBOOKS
 
-## Notes
+## Task Sequence
+1. <First task the agent performs>
+2. <Second task>
+3. <...>
 
-- Edge cases
-- Required approvals
+## Expected Outputs
+- <Artifact the client receives>
+
+## Approval Gates
+- After task **3**: \`gate_type\` — <what is being approved and why>
 `
+
+/** @deprecated Use SKILL_BLANK_TEMPLATE */
+export const SKILL_MARKDOWN_PLACEHOLDER = SKILL_BLANK_TEMPLATE
+
+function stringOr(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim()
+  }
+  return undefined
+}
+
+function numberOr(...values: unknown[]): number {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return value
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(value)
+      if (Number.isFinite(parsed)) return parsed
+    }
+  }
+  return 0
+}

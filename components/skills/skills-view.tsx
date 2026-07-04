@@ -13,7 +13,12 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { useWorkspacePermissions } from "@/hooks/use-workspace-permissions"
 import { isCustomSkill, listSkills, type ApiSkill } from "@/lib/api/skills"
-import { getRequiredIntegrations } from "@/lib/skills/skill-markdown"
+import {
+  formatIntegrationLabel,
+  getApprovalGates,
+  getRequiredIntegrations,
+  getTaskSequence,
+} from "@/lib/skills/skill-markdown"
 import { cn } from "@/lib/utils"
 
 type SkillsTab = "all" | "core" | "custom"
@@ -162,6 +167,8 @@ export function SkillsView() {
               {visibleSkills.map((skill, index) => {
                 const custom = isCustomSkill(skill)
                 const integrations = getRequiredIntegrations(skill)
+                const stepCount = getTaskSequence(skill).length
+                const gateCount = getApprovalGates(skill).length
 
                 return (
                   <article key={skill.id}>
@@ -175,14 +182,14 @@ export function SkillsView() {
                           <h3 className="text-sm font-medium text-foreground group-hover:underline">
                             {skill.name}
                           </h3>
-                          <Badge variant={custom ? "default" : "outline"}>
-                            {custom ? "Custom" : "Core"}
-                          </Badge>
                           {skill.category ? (
                             <Badge variant="outline" className="font-normal">
                               {skill.category}
                             </Badge>
                           ) : null}
+                          <Badge variant={custom ? "default" : "outline"}>
+                            {custom ? "Custom" : "Core"}
+                          </Badge>
                         </div>
                         {skill.description ? (
                           <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
@@ -191,7 +198,19 @@ export function SkillsView() {
                         ) : null}
                         {integrations.length > 0 ? (
                           <p className="mt-2 text-xs text-muted-foreground">
-                            Requires: {integrations.join(", ")}
+                            Requires:{" "}
+                            {integrations.map((key) => formatIntegrationLabel(key)).join(", ")}
+                          </p>
+                        ) : null}
+                        {stepCount > 0 || gateCount > 0 ? (
+                          <p className="mt-1.5 text-xs text-muted-foreground">
+                            {stepCount > 0
+                              ? `${stepCount} step${stepCount === 1 ? "" : "s"}`
+                              : null}
+                            {stepCount > 0 && gateCount > 0 ? " · " : null}
+                            {gateCount > 0
+                              ? `${gateCount} approval gate${gateCount === 1 ? "" : "s"}`
+                              : null}
                           </p>
                         ) : null}
                       </div>

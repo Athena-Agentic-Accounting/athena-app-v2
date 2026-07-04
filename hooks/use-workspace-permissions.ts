@@ -4,7 +4,7 @@ import { useAuth, useUser } from "@clerk/nextjs"
 import { useMemo } from "react"
 
 import type { ApiClientDetail, ClientMemberRole } from "@/lib/api/clients"
-import { fromApiMemberRole } from "@/lib/api/clients"
+import { fromApiMemberRole, getMemberEmail } from "@/lib/api/clients"
 
 export function useWorkspacePermissions(clientDetail?: ApiClientDetail | null) {
   const { orgRole } = useAuth()
@@ -19,9 +19,7 @@ export function useWorkspacePermissions(clientDetail?: ApiClientDetail | null) {
     }
 
     const email = user.primaryEmailAddress.emailAddress.toLowerCase()
-    const member = clientDetail.members.find(
-      (entry) => entry.email.toLowerCase() === email,
-    )
+    const member = clientDetail.members.find((entry) => getMemberEmail(entry) === email)
 
     return member ? fromApiMemberRole(member.role) : null
   }, [clientDetail?.members, user?.primaryEmailAddress?.emailAddress])
