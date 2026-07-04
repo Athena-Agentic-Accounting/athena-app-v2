@@ -2,8 +2,11 @@
 
 import { useMemo, useState } from "react"
 import Image from "next/image"
+import { useAuth } from "@clerk/nextjs"
+import { toast } from "sonner"
 import {
   RiFilter3Line,
+  RiFolderLine,
   RiSearchLine,
   RiSettings3Line,
 } from "@remixicon/react"
@@ -13,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import type { IntegrationProvider } from "@/lib/athena/user-metadata"
 import type { ApiClientDetail } from "@/lib/api/clients"
+import { setGoogleDriveFolder } from "@/lib/api/connections"
 import {
   CONNECTION_STATUS_LABELS,
   getClientDriveConnection,
@@ -245,6 +249,13 @@ export function ClientIntegrationsPanel({
                 {isManaging ? (
                   <div className="border-t border-border/60 bg-muted/15 px-4 py-4">
                     <IntegrationManagePanel
+                      provider={app.provider}
+                      clientId={detail.id}
+                      boundFolderId={
+                        app.provider === "google_drive"
+                          ? getDriveFolderId(detail)
+                          : undefined
+                      }
                       connection={app.connection}
                       connecting={connectingProvider === app.provider}
                       isNotConnected={isNotConnected}
@@ -291,12 +302,26 @@ function IntegrationLogo({
   )
 }
 
+/** Bound Drive folder from the detail payload's connectors (config.folderId). */
+function getDriveFolderId(detail: ApiClientDetail): string | undefined {
+  const connector = detail.connectors?.find(
+    (c) => c.provider?.toUpperCase() === "GOOGLE_DRIVE",
+  )
+  return connector?.config?.folderId ?? undefined
+}
+
 function IntegrationManagePanel({
+  provider,
+  clientId,
+  boundFolderId,
   connection,
   connecting,
   isNotConnected,
   onConnect,
 }: {
+  provider: IntegrationProvider
+  clientId: string
+  boundFolderId?: string
   connection: ClientConnection
   connecting: boolean
   isNotConnected: boolean
@@ -332,6 +357,10 @@ function IntegrationManagePanel({
         ) : null}
       </dl>
 
+      {provider === "google_drive" && !isNotConnected ? (
+        <DriveFolderBinding clientId={clientId} boundFolderId={boundFolderId} />
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
@@ -347,6 +376,93 @@ function IntegrationManagePanel({
           ) : (
             "Reconnect"
           )}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Google Drive folder binding (added 2026-07-03). Until a folder is bound the
+ * engine never indexes this client's Drive ("no folder bound"), so document
+ * search stays empty. Accepts a folder ID or a full Drive folder URL.
+ */
+function DriveFolderBinding({
+  clientId,
+  boundFolderId,
+}: {
+  clientId: string
+  boundFolderId?: string
+}) {
+  const { getToken } = useAuth()
+  const [folderInput, setFolderInput] = useState("")
+  const [savedFolderId, setSavedFolderId] = useState(boundFolderId)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const parseFolderId = (value: string): string => {
+    const trimmed = value.trim()
+    // Accept a pasted Drive URL: .../folders/<id>?...
+    const match = trimmed.match(/folders\/([a-zA-Z0-9_-]+)/)
+    return match?.[1] ?? trimmed
+  }
+
+  const handleSave = async () => {
+    const folderId = parseFolderId(folderInput)
+    if (!folderId) return
+
+    setIsSaving(true)
+    try {
+      const token = await getToken()
+      await setGoogleDriveFolder(token, clientId, folderId)
+      setSavedFolderId(folderId)
+      setFolderInput("")
+      toast.success("Drive folder bound — initial indexing started")
+    } catch (err) {
+      toast.error("Could not bind Drive folder", {
+        description: err instanceof Error ? err.message : "Something went wrong.",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border/60 bg-background/60 p-3">
+      <div className="flex items-center gap-1.5">
+        <RiFolderLine className="size-3.5 text-muted-foreground" />
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          Drive folder
+        </p>
+      </div>
+
+      {savedFolderId ? (
+        <p className="text-xs text-muted-foreground">
+          Bound to folder{" "}
+          <span className="font-mono text-foreground">{savedFolderId}</span>
+        </p>
+      ) : (
+        <p className="text-xs text-amber-700">
+          No folder bound yet — Athena cannot index or search this client&apos;s
+          documents until one is set.
+        </p>
+      )}
+
+      <div className="flex items-center gap-2">
+        <Input
+          value={folderInput}
+          onChange={(event) => setFolderInput(event.target.value)}
+          placeholder="Paste a Drive folder URL or ID…"
+          className="h-8 bg-background text-xs"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-8 shrink-0 px-3 text-xs"
+          disabled={isSaving || !folderInput.trim()}
+          onClick={() => void handleSave()}
+        >
+          {isSaving ? <Spinner className="size-3.5" /> : savedFolderId ? "Rebind" : "Bind"}
         </Button>
       </div>
     </div>

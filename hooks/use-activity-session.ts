@@ -212,7 +212,13 @@ export function useActivitySession(
       unsubscribe?.();
       unsubscribe = subscribeActivityStream(token, activityIdRef.current, {
         onOpen: () => {
-          if (!cancelled) setStreamStatus("connected");
+          if (cancelled) return;
+          setStreamStatus("connected");
+          // Backfill from the engine's durable history on every (re)connect —
+          // the agent's SSE broker is fire-and-forget, so anything emitted
+          // while we were disconnected only exists in the persisted messages.
+          // Idempotent: refreshMessages merges by event id.
+          void refreshMessages().catch(() => {});
         },
         onEvent: (raw) => {
           if (cancelled) return;

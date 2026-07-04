@@ -41,3 +41,16 @@ export async function disconnectIntegration(
     body: { clientId },
   })
 }
+
+
+export async function setGoogleDriveFolder(
+  token: string | null,
+  clientId: string,
+  folderId: string,
+): Promise<void> {
+  await backendRequest(`/api/connections/google-drive/folder`, {
+    method: "POST",
+    token,
+    body: { clientId, folderId },
+  })
+}
