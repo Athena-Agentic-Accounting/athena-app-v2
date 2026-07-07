@@ -19,6 +19,7 @@ type NotificationsContextValue = {
   notifications: AppNotification[]
   unreadCount: number
   isLoading: boolean
+  error: string | null
   refreshNotifications: () => Promise<void>
   markRead: (notificationId: string) => Promise<void>
   markAllRead: () => Promise<void>
@@ -30,6 +31,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { getToken } = useAuth()
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const refreshNotifications = useCallback(async () => {
     setIsLoading(true)
@@ -37,8 +39,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       const token = await getToken()
       const items = await listNotifications(token, { limit: 20 })
       setNotifications(items.map(mapApiNotification))
-    } catch {
+      setError(null)
+    } catch (err) {
       setNotifications([])
+      setError(err instanceof Error ? err.message : "Could not load notifications.")
     } finally {
       setIsLoading(false)
     }
@@ -54,8 +58,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         const items = await listNotifications(token, { limit: 20 })
         if (cancelled) return
         setNotifications(items.map(mapApiNotification))
-      } catch {
-        if (!cancelled) setNotifications([])
+        setError(null)
+      } catch (err) {
+        if (!cancelled) {
+          setNotifications([])
+          setError(
+            err instanceof Error ? err.message : "Could not load notifications.",
+          )
+        }
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -108,6 +118,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         notifications,
         unreadCount,
         isLoading,
+        error,
         refreshNotifications,
         markRead,
         markAllRead,

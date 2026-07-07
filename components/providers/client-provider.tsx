@@ -100,6 +100,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
           showClientSwitcher: false,
           clients: primary ? [primary] : apiClients,
           defaultClientId: primary?.id ?? apiClients[0].id,
+          source: "api",
         }
       }
 
@@ -111,6 +112,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
           ...apiClients,
         ],
         defaultClientId: ALL_CLIENTS_ID,
+        source: "api",
       }
     }
 

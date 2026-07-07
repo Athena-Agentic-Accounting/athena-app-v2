@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { EditActivityDialog } from "@/components/session/edit-activity-dialog";
@@ -8,6 +8,7 @@ import { SessionWorkspaceView } from "@/components/session/session-workspace-vie
 import { Spinner } from "@/components/ui/spinner";
 import { useActivitySession } from "@/hooks/use-activity-session";
 import { useActivitySessionRegistration } from "@/hooks/use-activity-session-registry";
+import { trackRecent } from "@/lib/navigation/recents";
 
 type ActivitySessionViewProps = {
   activityId: string;
@@ -23,6 +24,17 @@ export function ActivitySessionView({
   const session = useActivitySession(activityId, initialPrompt);
   const [editOpen, setEditOpen] = useState(false);
 
+  const activityName = session.activity?.name;
+  useEffect(() => {
+    if (!activityName) return;
+    trackRecent({
+      id: activityId,
+      label: activityName,
+      href: `/activities/${activityId}`,
+      kind: "activity",
+    });
+  }, [activityId, activityName]);
+
   if (session.isLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-background">
@@ -37,6 +49,8 @@ export function ActivitySessionView({
         activityId={activityId}
         activityName={session.activity?.name}
         activityLocked={Boolean(session.activity?.auditLockedAt)}
+        activityStatus={session.activity?.status}
+        onStatusChange={() => void session.refreshActivity()}
         artifact={session.artifact}
         thoughts={session.thoughts}
         streamEvents={session.streamEvents}

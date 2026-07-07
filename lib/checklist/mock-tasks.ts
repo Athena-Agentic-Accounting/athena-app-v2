@@ -4,6 +4,9 @@ export type ChecklistTask = {
   id: string
   title: string
   status: TaskStatus
+  /** Raw engine activity status (e.g. "executing", "awaiting_input") — the
+   * column status is lossy, so run controls need the original. */
+  rawStatus?: string
   category: string
   dueDate: string
   assignees: string[]

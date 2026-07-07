@@ -28,6 +28,7 @@ function mapBoardActivityToChecklistTask(
     id: activity.id,
     title: activity.name,
     status,
+    rawStatus: activity.status ?? columnStatus,
     category: formatActivityCategory(activity.type),
     dueDate: formatDueDate(activity.dueDate ?? activity.startDate),
     assignees: activity.assignedTo?.name

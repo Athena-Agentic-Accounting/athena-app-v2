@@ -15,9 +15,7 @@ import { useWorkspacePermissions } from "@/hooks/use-workspace-permissions"
 import { isCustomSkill, listSkills, type ApiSkill } from "@/lib/api/skills"
 import {
   formatIntegrationLabel,
-  getApprovalGates,
   getRequiredIntegrations,
-  getTaskSequence,
 } from "@/lib/skills/skill-markdown"
 import { cn } from "@/lib/utils"
 
@@ -167,8 +165,6 @@ export function SkillsView() {
               {visibleSkills.map((skill, index) => {
                 const custom = isCustomSkill(skill)
                 const integrations = getRequiredIntegrations(skill)
-                const stepCount = getTaskSequence(skill).length
-                const gateCount = getApprovalGates(skill).length
 
                 return (
                   <article key={skill.id}>
@@ -200,17 +196,6 @@ export function SkillsView() {
                           <p className="mt-2 text-xs text-muted-foreground">
                             Requires:{" "}
                             {integrations.map((key) => formatIntegrationLabel(key)).join(", ")}
-                          </p>
-                        ) : null}
-                        {stepCount > 0 || gateCount > 0 ? (
-                          <p className="mt-1.5 text-xs text-muted-foreground">
-                            {stepCount > 0
-                              ? `${stepCount} step${stepCount === 1 ? "" : "s"}`
-                              : null}
-                            {stepCount > 0 && gateCount > 0 ? " · " : null}
-                            {gateCount > 0
-                              ? `${gateCount} approval gate${gateCount === 1 ? "" : "s"}`
-                              : null}
                           </p>
                         ) : null}
                       </div>

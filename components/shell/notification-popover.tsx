@@ -1,10 +1,17 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { RiNotification3Line } from "@remixicon/react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useAuth } from "@clerk/nextjs"
+import { RiNotification3Line, RiNotificationBadgeLine } from "@remixicon/react"
+import { toast } from "sonner"
 
 import { useNotifications } from "@/components/providers/notifications-provider"
 import { Button } from "@/components/ui/button"
+import {
+  canUsePushNotifications,
+  registerPushNotifications,
+  unregisterPushNotifications,
+} from "@/lib/notifications/push"
 import {
   Popover,
   PopoverContent,
@@ -75,11 +82,84 @@ function NotificationItem({
   )
 }
 
+function PushNotificationsRow() {
+  const { getToken } = useAuth()
+  const [permission, setPermission] = useState<NotificationPermission | null>(null)
+  const [subscribed, setSubscribed] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const refreshState = useCallback(async () => {
+    if (!canUsePushNotifications()) return
+    setPermission(Notification.permission)
+    try {
+      const registration = await navigator.serviceWorker.getRegistration("/sw.js")
+      const subscription = await registration?.pushManager.getSubscription()
+      setSubscribed(Boolean(subscription))
+    } catch {
+      setSubscribed(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshState()
+  }, [refreshState])
+
+  if (!canUsePushNotifications() || permission === null) return null
+
+  if (permission === "denied") {
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        Browser notifications are blocked — enable them in your browser settings.
+      </p>
+    )
+  }
+
+  const enabled = permission === "granted" && subscribed
+
+  async function handleToggle() {
+    setBusy(true)
+    try {
+      const token = await getToken()
+      if (enabled) {
+        await unregisterPushNotifications(token)
+      } else {
+        // Permission prompts require a user gesture — this click is one.
+        const result = await Notification.requestPermission()
+        if (result !== "granted") {
+          setPermission(result)
+          return
+        }
+        await registerPushNotifications(token)
+      }
+      await refreshState()
+    } catch (err) {
+      toast.error("Could not update browser notifications", {
+        description: err instanceof Error ? err.message : "Something went wrong.",
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => void handleToggle()}
+      className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+    >
+      <RiNotificationBadgeLine className="size-3.5" />
+      {enabled ? "Disable browser notifications" : "Enable browser notifications"}
+    </button>
+  )
+}
+
 export function NotificationPopover() {
   const {
     notifications,
     unreadCount,
     isLoading,
+    error,
     markRead,
     markAllRead,
     refreshNotifications,
@@ -138,6 +218,10 @@ export function NotificationPopover() {
                 onRead={(id) => void markRead(id)}
               />
             ))
+          ) : error ? (
+            <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+              Could not load notifications — {error}
+            </p>
           ) : (
             <p className="px-2 py-6 text-center text-xs text-muted-foreground">
               No notifications yet
@@ -145,14 +229,15 @@ export function NotificationPopover() {
           )}
         </div>
         <Separator />
-        <div className="px-4 py-2.5">
+        <div className="flex flex-col gap-2 px-4 py-2.5">
           <button
             type="button"
-            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="self-start text-xs text-muted-foreground transition-colors hover:text-foreground"
             onClick={() => void refreshNotifications()}
           >
             Refresh
           </button>
+          <PushNotificationsRow />
         </div>
       </PopoverContent>
     </Popover>

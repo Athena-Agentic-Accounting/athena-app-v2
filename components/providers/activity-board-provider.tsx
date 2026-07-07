@@ -26,6 +26,7 @@ type ActivityBoardContextValue = {
   allCount: number
   assignedCount: number
   isLoading: boolean
+  error: string | null
   refreshBoard: () => Promise<void>
 }
 
@@ -37,6 +38,7 @@ export function ActivityBoardProvider({ children }: { children: ReactNode }) {
   const { selectedClientId, isLoaded: clientLoaded } = useClient()
   const [tasks, setTasks] = useState<ChecklistTask[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const meta = useMemo(
     () =>
@@ -60,8 +62,10 @@ export function ActivityBoardProvider({ children }: { children: ReactNode }) {
       const token = await getToken()
       const board = await getActivityBoard(token, clientFilter)
       setTasks(mapBoardToChecklistTasks(board))
-    } catch {
+      setError(null)
+    } catch (err) {
       setTasks([])
+      setError(err instanceof Error ? err.message : "Could not load the board.")
     } finally {
       setIsLoading(false)
     }
@@ -84,8 +88,12 @@ export function ActivityBoardProvider({ children }: { children: ReactNode }) {
         const board = await getActivityBoard(token, clientFilter)
         if (cancelled) return
         setTasks(mapBoardToChecklistTasks(board))
-      } catch {
-        if (!cancelled) setTasks([])
+        setError(null)
+      } catch (err) {
+        if (!cancelled) {
+          setTasks([])
+          setError(err instanceof Error ? err.message : "Could not load the board.")
+        }
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -104,6 +112,7 @@ export function ActivityBoardProvider({ children }: { children: ReactNode }) {
         allCount: counts.allCount,
         assignedCount: counts.assignedCount,
         isLoading,
+        error,
         refreshBoard,
       }}
     >

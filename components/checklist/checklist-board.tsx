@@ -16,7 +16,7 @@ import {
 import { PlusIcon } from "lucide-react"
 
 import { BoardEmptyState } from "@/components/checklist/board-empty-state"
-import { TaskCard } from "@/components/checklist/task-card"
+import { TaskCard, type TaskCardAction } from "@/components/checklist/task-card"
 import {
   CHECKLIST_COLUMNS,
   type ChecklistTask,
@@ -30,6 +30,7 @@ type ChecklistBoardProps = {
   tasks: ChecklistTask[]
   onTasksChange?: (tasks: ChecklistTask[]) => void
   onTaskClick?: (task: ChecklistTask) => void
+  onTaskAction?: (task: ChecklistTask, action: TaskCardAction) => void
   onWelcomeCheckClick?: () => void
   onAddTask?: (status: TaskStatus) => void
   showEmptyState?: boolean
@@ -44,10 +45,12 @@ function isColumnStatus(value: unknown): value is TaskStatus {
 function DraggableTaskCard({
   task,
   onClick,
+  onAction,
   showClientTag,
 }: {
   task: ChecklistTask
   onClick?: () => void
+  onAction?: (action: TaskCardAction) => void
   showClientTag?: boolean
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -60,6 +63,7 @@ function DraggableTaskCard({
       <TaskCard
         task={task}
         onClick={onClick}
+        onAction={onAction}
         isDragging={isDragging}
         showClientTag={showClientTag}
         dragHandleProps={{ attributes, listeners }}
@@ -73,6 +77,7 @@ function BoardColumn({
   label,
   tasks,
   onTaskClick,
+  onTaskAction,
   onWelcomeCheckClick,
   onAddTask,
   isDropTarget,
@@ -82,6 +87,7 @@ function BoardColumn({
   label: string
   tasks: ChecklistTask[]
   onTaskClick?: (task: ChecklistTask) => void
+  onTaskAction?: (task: ChecklistTask, action: TaskCardAction) => void
   onWelcomeCheckClick?: () => void
   onAddTask?: (status: TaskStatus) => void
   isDropTarget: boolean
@@ -111,6 +117,9 @@ function BoardColumn({
             key={task.id}
             task={task}
             showClientTag={showClientTag}
+            onAction={
+              onTaskAction ? (action) => onTaskAction(task, action) : undefined
+            }
             onClick={
               task.id === "welcome-check"
                 ? onWelcomeCheckClick
@@ -138,6 +147,7 @@ export function ChecklistBoard({
   tasks,
   onTasksChange,
   onTaskClick,
+  onTaskAction,
   onWelcomeCheckClick,
   onAddTask,
   showEmptyState = false,
@@ -226,6 +236,7 @@ export function ChecklistBoard({
                 label={column.label}
                 tasks={columnTasks}
                 onTaskClick={onTaskClick}
+                onTaskAction={onTaskAction}
                 onWelcomeCheckClick={onWelcomeCheckClick}
                 onAddTask={onAddTask}
                 isDropTarget={activeColumnId === column.id && activeTask !== null}

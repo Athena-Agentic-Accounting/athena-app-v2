@@ -135,7 +135,10 @@ function getProviderConnection(
   client: ApiClient | ApiClientDetail,
   provider: IntegrationProvider,
 ): ClientConnection {
-  const connector = findConnector(client.connectors, provider)
+  const connector = findConnector(
+    "connectors" in client ? client.connectors : undefined,
+    provider,
+  )
   if (connector) return mapConnector(connector)
 
   const fromIntegrations = findIntegration(client.integrations, provider)
@@ -149,7 +152,10 @@ function getProviderConnection(
     return mapIntegration(client.driveConnection)
   }
 
-  return connectionFromLegacyList(client.connections, provider)
+  return connectionFromLegacyList(
+    "connections" in client ? client.connections : undefined,
+    provider,
+  )
 }
 
 export function getClientQboConnection(client: ApiClient | ApiClientDetail): ClientConnection {

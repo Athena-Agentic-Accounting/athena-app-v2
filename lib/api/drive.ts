@@ -1,4 +1,4 @@
-import { backendRequest } from "@/lib/api/backend-client"
+import { ApiError, backendRequest } from "@/lib/api/backend-client"
 
 export type DriveIndexStatus = {
   documentCount?: number
@@ -29,8 +29,10 @@ export async function getDriveIndexStatus(
 
     if ("index" in data && data.index) return data.index
     return data as DriveIndexStatus
-  } catch {
-    return null
+  } catch (err) {
+    // "Nothing indexed yet" is a normal state; anything else should surface.
+    if (err instanceof ApiError && err.status === 404) return null
+    throw err
   }
 }
 
@@ -51,7 +53,8 @@ export async function searchDriveDocuments(
 
     if (Array.isArray(data)) return data
     return data.results ?? data.documents ?? []
-  } catch {
-    return []
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return []
+    throw err
   }
 }

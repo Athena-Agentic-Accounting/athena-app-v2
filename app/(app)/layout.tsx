@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 
+import { RequireActiveOrg } from "@/components/auth/require-active-org"
 import { AppShell } from "@/components/shell/app-shell"
 import { getAthenaMetadata } from "@/lib/athena/user-metadata"
 
@@ -18,5 +19,9 @@ export default async function AppLayout({
   )
   if (!meta?.onboardingComplete) redirect("/onboarding")
 
-  return <AppShell>{children}</AppShell>
+  return (
+    <RequireActiveOrg>
+      <AppShell>{children}</AppShell>
+    </RequireActiveOrg>
+  )
 }

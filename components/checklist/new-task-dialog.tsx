@@ -127,7 +127,7 @@ export function NewTaskDialog({
   const router = useRouter()
   const { getToken } = useAuth()
   const { organizationName } = useTenantConfig()
-  const { clients, selectedClientId } = useClient()
+  const { clients, selectedClientId, source: clientSource } = useClient()
   const titleRef = useRef<HTMLInputElement>(null)
   const dateInputRef = useRef<HTMLInputElement>(null)
   const timeInputRef = useRef<HTMLInputElement>(null)
@@ -274,6 +274,13 @@ export function NewTaskDialog({
 
     if (!clientId) {
       toast.error("Select a client for this task.")
+      return
+    }
+
+    if (clientSource !== "api") {
+      toast.error("Clients are still loading", {
+        description: "Give it a moment and try again.",
+      })
       return
     }
 
