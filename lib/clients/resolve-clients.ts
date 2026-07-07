@@ -12,6 +12,9 @@ export type TenantClientConfig = {
   showClientSwitcher: boolean
   clients: Client[]
   defaultClientId: string
+  /** "fallback" = client IDs are fabricated from metadata (slugs) and must
+   * never be sent to the engine; "api" = real backend client IDs. */
+  source: "api" | "fallback"
 }
 
 function slugify(value: string): string {
@@ -42,6 +45,7 @@ export function resolveTenantClients(
       showClientSwitcher: false,
       clients: [{ id, name: orgName, initials: getInitials(orgName) }],
       defaultClientId: id,
+      source: "fallback",
     }
   }
 
@@ -64,6 +68,7 @@ export function resolveTenantClients(
       showClientSwitcher: true,
       clients,
       defaultClientId: ALL_CLIENTS_ID,
+      source: "fallback",
     }
   }
 
@@ -72,5 +77,6 @@ export function resolveTenantClients(
     showClientSwitcher: true,
     clients: MOCK_CLIENTS,
     defaultClientId: DEFAULT_CLIENT_ID,
+    source: "fallback",
   }
 }

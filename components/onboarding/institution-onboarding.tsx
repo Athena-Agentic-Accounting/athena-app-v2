@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth, useUser } from "@clerk/nextjs"
+import { useAuth, useOrganization, useUser } from "@clerk/nextjs"
 import { RiArrowLeftSLine, RiBriefcaseLine, RiBuildingLine } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
 
@@ -92,6 +92,7 @@ const INVITE_ROLES: { value: ClientMemberRole; label: string }[] = [
 export function InstitutionOnboarding({ returnPath }: InstitutionOnboardingProps) {
   const { user, isLoaded } = useUser()
   const { getToken } = useAuth()
+  const { organization } = useOrganization()
   const router = useRouter()
 
   const savedMeta = useMemo(
@@ -130,6 +131,14 @@ export function InstitutionOnboarding({ returnPath }: InstitutionOnboardingProps
   >(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Workspaces are provisioned by the Athena team on the Clerk dashboard, so
+  // the dashboard org name is authoritative — prefill it when nothing saved.
+  useEffect(() => {
+    const dashboardName = organization?.name?.trim()
+    if (!dashboardName) return
+    setOrganizationName((current) => (current.trim() ? current : dashboardName))
+  }, [organization?.name])
 
   const steps = useMemo(() => getOnboardingSteps(tenantType), [tenantType])
   const currentStep = steps.find((step) => step.id === currentStepId) ?? steps[0]

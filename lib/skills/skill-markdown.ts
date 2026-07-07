@@ -4,6 +4,22 @@ export function getRequiredIntegrations(skill: ApiSkill): string[] {
   return skill.requiredIntegrations ?? skill.required_integrations ?? []
 }
 
+const INTEGRATION_LABELS: Record<string, string> = {
+  QUICKBOOKS: "QuickBooks",
+  GOOGLE_DRIVE: "Google Drive",
+  XERO: "Xero",
+  PLAID: "Plaid",
+}
+
+export function formatIntegrationLabel(key: string): string {
+  const normalized = key.trim().toUpperCase()
+  if (INTEGRATION_LABELS[normalized]) return INTEGRATION_LABELS[normalized]
+  return normalized
+    .split(/[_\s]+/)
+    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+    .join(" ")
+}
+
 export function getSkillContent(skill: ApiSkill): string {
   return skill.content ?? ""
 }
@@ -45,21 +61,3 @@ export const SKILL_BLANK_TEMPLATE = `# <Skill Name>
 
 /** @deprecated Use SKILL_BLANK_TEMPLATE */
 export const SKILL_MARKDOWN_PLACEHOLDER = SKILL_BLANK_TEMPLATE
-
-function stringOr(...values: unknown[]): string | undefined {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim()) return value.trim()
-  }
-  return undefined
-}
-
-function numberOr(...values: unknown[]): number {
-  for (const value of values) {
-    if (typeof value === "number" && Number.isFinite(value)) return value
-    if (typeof value === "string" && value.trim()) {
-      const parsed = Number(value)
-      if (Number.isFinite(parsed)) return parsed
-    }
-  }
-  return 0
-}

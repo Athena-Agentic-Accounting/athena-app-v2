@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 
+import { RequireActiveOrg } from "@/components/auth/require-active-org"
 import { InstitutionOnboarding } from "@/components/onboarding/institution-onboarding"
 import { getAthenaMetadata } from "@/lib/athena/user-metadata"
 
@@ -39,5 +40,9 @@ export default async function OnboardingPage({
     redirect(returnPath)
   }
 
-  return <InstitutionOnboarding returnPath={returnPath} />
+  return (
+    <RequireActiveOrg>
+      <InstitutionOnboarding returnPath={returnPath} />
+    </RequireActiveOrg>
+  )
 }

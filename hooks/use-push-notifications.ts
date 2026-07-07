@@ -3,8 +3,13 @@
 import { useEffect } from "react"
 import { useAuth } from "@clerk/nextjs"
 
-import { registerPushNotifications } from "@/lib/notifications/push"
+import { canUsePushNotifications, registerPushNotifications } from "@/lib/notifications/push"
 
+/**
+ * Keeps an existing push subscription registered with the engine. Never
+ * prompts for permission — that requires a user gesture and lives in the
+ * notification popover's enable toggle.
+ */
 export function usePushNotifications() {
   const { getToken, isSignedIn } = useAuth()
 
@@ -15,11 +20,7 @@ export function usePushNotifications() {
 
     async function register() {
       try {
-        if (Notification.permission === "default") {
-          const permission = await Notification.requestPermission()
-          if (permission !== "granted") return
-        }
-
+        if (!canUsePushNotifications()) return
         if (Notification.permission !== "granted") return
 
         const token = await getToken()

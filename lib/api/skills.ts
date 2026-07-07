@@ -1,6 +1,5 @@
 import { backendRequest } from "@/lib/api/backend-client"
 import { unwrapList, unwrapRecord } from "@/lib/api/unwrap"
-import type { SkillApprovalGate, SkillTaskStep } from "@/lib/skills/types"
 
 export type ApiSkill = {
   id: string
@@ -20,8 +19,6 @@ export type ApiSkill = {
   is_core?: boolean
   isCustom?: boolean
   is_custom?: boolean
-  isCore?: boolean
-  is_core?: boolean
   isCustomisable?: boolean
   is_customisable?: boolean
   organizationId?: string | null
@@ -116,4 +113,12 @@ export function isCustomSkill(skill: ApiSkill): boolean {
   if (typeof skill.isCore === "boolean") return !skill.isCore
   if (typeof skill.is_core === "boolean") return !skill.is_core
   return skill.isCustom ?? skill.is_custom ?? false
+}
+
+export function isCoreSkill(skill: ApiSkill): boolean {
+  return !isCustomSkill(skill)
+}
+
+export function isCustomisableSkill(skill: ApiSkill): boolean {
+  return skill.isCustomisable ?? skill.is_customisable ?? false
 }

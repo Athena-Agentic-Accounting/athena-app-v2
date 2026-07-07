@@ -16,6 +16,7 @@ import {
   deleteSkill,
   getSkill,
   isCustomSkill,
+  isCustomisableSkill,
   type ApiSkill,
 } from "@/lib/api/skills"
 
@@ -159,8 +160,8 @@ export function SkillDetailView({ skillId }: SkillDetailViewProps) {
           <SkillDetailCard skill={skill} />
           {!custom && customisable ? (
             <p className="mt-4 text-xs text-muted-foreground">
-              Core skills are read-only templates. Customise by copying into your firm&apos;s
-              library when that flow is available.
+              Editing a core skill creates your firm&apos;s own copy — the core template
+              stays untouched.
             </p>
           ) : null}
         </div>

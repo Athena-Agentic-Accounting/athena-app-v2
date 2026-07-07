@@ -20,11 +20,10 @@ export type ApiClientIntegration = {
   connected_at?: string
   lastSyncAt?: string
   last_sync_at?: string
-}
-
-export type ApiClientConnection = ApiClientIntegration & {
   connected?: boolean
 }
+
+export type ApiClientConnection = ApiClientIntegration
 
 export type ApiClientActivityCounts = Record<string, number>
 
@@ -89,7 +88,7 @@ export type ApiClientDetail = ApiClient & {
 }
 
 type ApiClientDetailResponse = {
-  client: ApiClient
+  client: ApiClientDetail
   members?: ApiClientDetail["members"]
   connectors?: ApiClientConnector[]
   connections?: ApiClientConnection[]

@@ -1,17 +1,14 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import {
-  RiCalendarLine,
-  RiCloseLine,
-  RiEditLine,
-  RiLinkM,
-} from "@remixicon/react"
+import { RiCloseLine, RiEditLine, RiLinkM } from "@remixicon/react"
+import { toast } from "sonner"
 
 import { ChatMessageBubble } from "@/components/chat/chat-message-bubble"
 import { ChatPromptBar } from "@/components/chat/chat-prompt-bar"
 import { ChatTypingIndicator } from "@/components/chat/chat-typing-indicator"
 import { CardRenderer } from "@/components/genui/card-renderer"
+import { ActivityRunControls } from "@/components/session/activity-run-controls"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Spinner } from "@/components/ui/spinner"
@@ -38,6 +35,8 @@ type ChatSessionPanelProps = {
   onApprovalDecision?: UseActivitySessionReturn["handleApprovalDecision"]
   onEditActivity?: () => void
   activityLocked?: boolean
+  activityStatus?: string
+  onStatusChange?: () => void | Promise<void>
   className?: string
 }
 
@@ -58,6 +57,8 @@ export function ChatSessionPanel({
   onApprovalDecision,
   onEditActivity,
   activityLocked = false,
+  activityStatus,
+  onStatusChange,
   className,
 }: ChatSessionPanelProps) {
   const scrollAnchorRef = useRef<HTMLDivElement>(null)
@@ -172,6 +173,11 @@ export function ChatSessionPanel({
         </div>
 
         <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
+          <ActivityRunControls
+            activityId={activityId}
+            activityStatus={activityStatus}
+            onStatusChange={onStatusChange}
+          />
           {onEditActivity ? (
             <button
               type="button"
@@ -188,6 +194,13 @@ export function ChatSessionPanel({
             type="button"
             className="flex size-7 items-center justify-center rounded-md hover:bg-muted/50"
             aria-label="Copy link"
+            title="Copy link"
+            onClick={() => {
+              void navigator.clipboard
+                .writeText(`${window.location.origin}/activities/${activityId}`)
+                .then(() => toast.success("Link copied"))
+                .catch(() => toast.error("Could not copy the link"))
+            }}
           >
             <RiLinkM className="size-4" />
           </button>
@@ -203,13 +216,6 @@ export function ChatSessionPanel({
               {streamLabel}
             </span>
           ) : null}
-          <button
-            type="button"
-            className="flex size-7 items-center justify-center rounded-md hover:bg-muted/50"
-            aria-label="Schedule"
-          >
-            <RiCalendarLine className="size-4" />
-          </button>
           <button
             type="button"
             className="flex size-7 items-center justify-center rounded-md hover:bg-muted/50"

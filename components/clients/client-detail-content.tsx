@@ -37,6 +37,7 @@ import {
   getClientDriveConnection,
 } from "@/lib/clients/connection-status"
 import { formatTimeAgo } from "@/lib/format/time-ago"
+import { trackRecent } from "@/lib/navigation/recents"
 import { useWorkspacePermissions } from "@/hooks/use-workspace-permissions"
 import { connectIntegration } from "@/lib/integrations/connect-integration"
 import { cn } from "@/lib/utils"
@@ -112,6 +113,16 @@ export function ClientDetailContent({
   const activities = (detail.activities ?? []).slice(0, 5)
   const drive = getClientDriveConnection(detail)
 
+  useEffect(() => {
+    if (!detail.name) return
+    trackRecent({
+      id: clientId,
+      label: detail.name,
+      href: `/clients/${clientId}`,
+      kind: "client",
+    })
+  }, [clientId, detail.name])
+
   const loadDriveIndex = useCallback(async () => {
     if (drive.status === "not_connected") {
       setDriveIndexCount(null)
@@ -119,12 +130,18 @@ export function ClientDetailContent({
       return
     }
 
-    const token = await getToken()
-    const index = await getDriveIndexStatus(token, clientId)
-    if (!index) return
+    try {
+      const token = await getToken()
+      const index = await getDriveIndexStatus(token, clientId)
+      if (!index) return
 
-    setDriveIndexCount(index.documentCount ?? null)
-    setDriveLastSynced(index.lastSyncedAt ?? index.last_synced_at ?? null)
+      setDriveIndexCount(index.documentCount ?? null)
+      setDriveLastSynced(index.lastSyncedAt ?? index.last_synced_at ?? null)
+    } catch (err) {
+      toast.error("Could not load the Drive index status", {
+        description: err instanceof Error ? err.message : "Something went wrong.",
+      })
+    }
   }, [clientId, drive.status, getToken])
 
   useEffect(() => {
@@ -143,6 +160,11 @@ export function ClientDetailContent({
         const token = await getToken()
         const results = await searchDriveDocuments(token, clientId, driveSearchQuery)
         setDriveSearchResults(results)
+      } catch (err) {
+        setDriveSearchResults([])
+        toast.error("Drive search failed", {
+          description: err instanceof Error ? err.message : "Something went wrong.",
+        })
       } finally {
         setDriveSearching(false)
       }

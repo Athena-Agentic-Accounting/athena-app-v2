@@ -1,9 +1,6 @@
 import type { RemixiconComponentType } from "@remixicon/react"
 import {
-  RiBankCardLine,
-  RiBarChartLine,
   RiBookOpenLine,
-  RiBuildingLine,
   RiCalendarScheduleLine,
   RiFlaskLine,
   RiGroupLine,
@@ -42,53 +39,8 @@ export const MAIN_NAV_ITEMS: SidebarNavItem[] = [
     icon: RiCalendarScheduleLine,
     matchPrefix: true,
   },
-  {
-    id: "financial-reports",
-    label: "Financial reports",
-    href: "/financial-reports",
-    icon: RiBarChartLine,
-  },
-  {
-    id: "bank-transactions",
-    label: "Bank transactions",
-    href: "/bank-transactions",
-    icon: RiBankCardLine,
-  },
   { id: "skills", label: "Skills", href: "/skills", icon: RiBookOpenLine, matchPrefix: true },
-  { id: "company", label: "Company", href: "/company", icon: RiBuildingLine },
   { id: "demo", label: "Demo", href: "/demo", icon: RiFlaskLine },
-]
-
-export type RecentNavItem = {
-  id: string
-  label: string
-  href: string
-  dotColor: string
-  timeAgo: string
-}
-
-export const RECENT_NAV_ITEMS: RecentNavItem[] = [
-  {
-    id: "unearned-deferred",
-    label: "Unearned/Deferred Reve...",
-    href: "/skills",
-    dotColor: "bg-violet-500",
-    timeAgo: "1h",
-  },
-  {
-    id: "fixed-asset",
-    label: "Fixed Asset Management",
-    href: "/skills",
-    dotColor: "bg-blue-500",
-    timeAgo: "2h",
-  },
-  {
-    id: "book-payroll",
-    label: "Book payroll entries",
-    href: "/skills",
-    dotColor: "bg-violet-500",
-    timeAgo: "2h",
-  },
 ]
 
 export function isNavItemActive(pathname: string, item: SidebarNavItem): boolean {
@@ -103,6 +55,8 @@ export function getVisibleNavItems(options: {
 }): SidebarNavItem[] {
   return MAIN_NAV_ITEMS.filter((item) => {
     if (item.id === "clients" && options.isInHouse) return false
+    // Demo pages are mock-data walkthroughs — dev/preview only.
+    if (item.id === "demo" && process.env.NODE_ENV === "production") return false
     return true
   })
 }

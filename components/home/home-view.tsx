@@ -42,7 +42,7 @@ export function HomeView() {
   const { getToken } = useAuth()
   const { user } = useUser()
   const { tasks, isLoading } = useActivityBoard()
-  const { selectedClientId, clients } = useClient()
+  const { selectedClientId, clients, source: clientSource } = useClient()
   const [submittingPrompt, setSubmittingPrompt] = useState(false)
 
   const statusCounts = useMemo(
@@ -56,6 +56,13 @@ export function HomeView() {
   )
 
   async function handlePromptSubmit(message: string) {
+    if (clientSource !== "api") {
+      toast.error("Clients are still loading", {
+        description: "Give it a moment and try again.",
+      })
+      return
+    }
+
     const clientId = resolvePromptClientId(selectedClientId, clients)
     if (!clientId) {
       toast.error("Select a client first", {

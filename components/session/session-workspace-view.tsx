@@ -27,6 +27,8 @@ type SessionWorkspaceViewProps = {
   onApprovalDecision?: UseActivitySessionReturn["handleApprovalDecision"]
   onEditActivity?: () => void
   activityLocked?: boolean
+  activityStatus?: string
+  onStatusChange?: () => void | Promise<void>
   onClose?: () => void
   className?: string
 }
@@ -48,6 +50,8 @@ export function SessionWorkspaceView({
   onApprovalDecision,
   onEditActivity,
   activityLocked = false,
+  activityStatus,
+  onStatusChange,
   onClose,
   className,
 }: SessionWorkspaceViewProps) {
@@ -85,6 +89,8 @@ export function SessionWorkspaceView({
         onApprovalDecision={onApprovalDecision}
         onEditActivity={onEditActivity}
         activityLocked={activityLocked}
+        activityStatus={activityStatus}
+        onStatusChange={onStatusChange}
         onViewPlan={() => {
           setShowArtifact(true)
           setActiveTabId(planTabId)
