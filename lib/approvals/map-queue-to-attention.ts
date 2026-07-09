@@ -6,6 +6,7 @@ import {
   resolveApprovalGateType,
   resolvePendingAction,
 } from "@/lib/api/approvals"
+import { journalEntryFromPendingAction, normalizeGateType } from "@/lib/genui/gate-types"
 import type { ApprovalGateCardData, JournalEntryReviewData } from "@/lib/genui/types"
 
 export type HomeAttentionItem = {
@@ -34,7 +35,7 @@ function defaultApproveLabel(gateType: string): string {
 
 export function mapApprovalQueueItemToAttention(item: ApprovalQueueItem): HomeAttentionItem {
   const gateId = resolveApprovalGateId(item)
-  const gateType = resolveApprovalGateType(item)
+  const gateType = normalizeGateType(resolveApprovalGateType(item))
   const activityId = resolveApprovalActivityId(item)
   const pendingAction = resolvePendingAction(item)
 
@@ -57,6 +58,13 @@ export function mapApprovalQueueItemToAttention(item: ApprovalQueueItem): HomeAt
         memo: item.payload.memo,
         title: item.payload.title,
       },
+    }
+  }
+
+  if (gateType === "journal_entry") {
+    const journalEntry = journalEntryFromPendingAction(pendingAction.args)
+    if (journalEntry) {
+      return { ...base, journalEntry }
     }
   }
 

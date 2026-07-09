@@ -12,6 +12,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { decideApproval } from "@/lib/api/approvals"
+import {
+  journalEntryFromPendingAction,
+  KNOWN_GATE_TYPES,
+  normalizeGateType,
+} from "@/lib/genui/gate-types"
 import type {
   ApprovalDecision,
   ApprovalDecisionRecord,
@@ -53,11 +58,19 @@ function GenericPayloadList({ payload }: { payload: Record<string, unknown> }) {
   )
 }
 
-function renderPayload(data: ApprovalGateCardData) {
-  const { gateType, payload } = data
+function resolveJournalEntryData(data: ApprovalGateCardData): JournalEntryReviewData | null {
+  if (isJournalEntryPayload(data.payload)) return data.payload
+  if (normalizeGateType(data.gateType) !== "journal_entry") return null
+  return journalEntryFromPendingAction(data.pendingAction?.args ?? {})
+}
 
-  if (gateType === "journal_entry" && isJournalEntryPayload(payload)) {
-    return <JournalEntryCardBody data={payload} />
+function renderPayload(data: ApprovalGateCardData) {
+  const gateType = normalizeGateType(data.gateType)
+  const { payload } = data
+
+  if (gateType === "journal_entry") {
+    const journalEntry = resolveJournalEntryData(data)
+    if (journalEntry) return <JournalEntryCardBody data={journalEntry} />
   }
 
   if (gateType === "transaction_categorization" && Array.isArray(payload.transactions)) {
@@ -88,8 +101,8 @@ function renderPayload(data: ApprovalGateCardData) {
     return <GenericPayloadList payload={payload} />
   }
 
-  if (process.env.NODE_ENV !== "production") {
-    console.warn(`[ApprovalGateCard] Unmapped gateType: ${gateType}`)
+  if (process.env.NODE_ENV !== "production" && !KNOWN_GATE_TYPES.has(gateType)) {
+    console.warn(`[ApprovalGateCard] Unmapped gateType: ${data.gateType}`)
   }
 
   return <GenericPayloadList payload={payload} />
@@ -108,9 +121,9 @@ export function ApprovalGateCard({
   const [rejectNotes, setRejectNotes] = useState("")
   const [editOpen, setEditOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [editedPayload, setEditedPayload] = useState<Record<string, unknown>>(data.payload)
+  const journalEntryData = useMemo(() => resolveJournalEntryData(data), [data])
   const [editedLines, setEditedLines] = useState<JournalEntryReviewData["lines"]>(
-    isJournalEntryPayload(data.payload) ? data.payload.lines : [],
+    journalEntryData?.lines ?? [],
   )
 
   const resolvedDecision = localDecision ?? decision
@@ -166,9 +179,9 @@ export function ApprovalGateCard({
   }
 
   const editJournalPayload = useMemo(() => {
-    if (!isJournalEntryPayload(data.payload)) return null
-    return { ...data.payload, lines: editedLines }
-  }, [data.payload, editedLines])
+    if (!journalEntryData) return null
+    return { ...journalEntryData, lines: editedLines }
+  }, [journalEntryData, editedLines])
 
   if (resolvedDecision) {
     const approved = resolvedDecision.decision !== "reject"
@@ -287,7 +300,7 @@ export function ApprovalGateCard({
                     disabled={submitting}
                     onClick={() =>
                       void submitDecision("edit", {
-                        editedPayload: editJournalPayload ?? editedPayload,
+                        editedPayload: editJournalPayload ?? data.payload,
                       })
                     }
                   >
