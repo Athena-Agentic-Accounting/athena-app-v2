@@ -7,7 +7,9 @@ import { useAuth } from "@clerk/nextjs"
 import { useUser } from "@clerk/nextjs"
 import { toast } from "sonner"
 
-import { ChatPromptBar } from "@/components/chat/chat-prompt-bar"
+import { ChatPromptBar, type PromptMode } from "@/components/chat/chat-prompt-bar"
+import { ChatMessageBubble } from "@/components/chat/chat-message-bubble"
+import { ChatTypingIndicator } from "@/components/chat/chat-typing-indicator"
 import { HomeAttentionList } from "@/components/home/home-attention-list"
 import { HomeStatusCards } from "@/components/home/home-status-cards"
 import { useActivityBoard } from "@/components/providers/activity-board-provider"
@@ -15,6 +17,7 @@ import { useClient } from "@/components/providers/client-provider"
 import { PageHeader } from "@/components/shell/page-header"
 import { Spinner } from "@/components/ui/spinner"
 import { submitActivityPrompt } from "@/lib/api/activities"
+import type { SessionChatMessage } from "@/lib/session/map-messages"
 import type { ChecklistTask, TaskStatus } from "@/lib/checklist/mock-tasks"
 import { ALL_CLIENTS_ID } from "@/lib/clients/resolve-clients"
 
@@ -44,6 +47,7 @@ export function HomeView() {
   const { tasks, isLoading } = useActivityBoard()
   const { selectedClientId, clients, source: clientSource } = useClient()
   const [submittingPrompt, setSubmittingPrompt] = useState(false)
+  const [messages, setMessages] = useState<SessionChatMessage[]>([])
 
   const statusCounts = useMemo(
     (): Record<TaskStatus, number> => ({
@@ -55,7 +59,7 @@ export function HomeView() {
     [tasks],
   )
 
-  async function handlePromptSubmit(message: string) {
+  async function handlePromptSubmit(message: string, mode: PromptMode) {
     if (clientSource !== "api") {
       toast.error("Clients are still loading", {
         description: "Give it a moment and try again.",
@@ -71,12 +75,17 @@ export function HomeView() {
       return
     }
 
+    // Show the question in the thread immediately.
+    setMessages((prev) => [
+      ...prev,
+      { id: `user-${Date.now()}`, role: "user", content: message },
+    ])
     setSubmittingPrompt(true)
     let navigated = false
 
     try {
       const token = await getToken()
-      const response = await submitActivityPrompt(token, { clientId, prompt: message })
+      const response = await submitActivityPrompt(token, { clientId, prompt: message, mode })
 
       const activityId = response.activity?.id
       if (activityId && (response.kind === "activity_proposed" || response.kind === "activity_created")) {
@@ -95,7 +104,10 @@ export function HomeView() {
         response.answer ?? response.message ?? response.content ?? null
 
       if (inlineAnswer) {
-        toast.message("Athena", { description: inlineAnswer })
+        setMessages((prev) => [
+          ...prev,
+          { id: `assistant-${Date.now()}`, role: "assistant", content: inlineAnswer },
+        ])
         return
       }
 
@@ -132,9 +144,20 @@ export function HomeView() {
               </p>
             </div>
 
+            {messages.length > 0 ? (
+              <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+                {messages.map((message) => (
+                  <ChatMessageBubble key={message.id} message={message} />
+                ))}
+                {submittingPrompt ? <ChatTypingIndicator /> : null}
+              </div>
+            ) : null}
+
             <div className="relative">
-              <ChatPromptBar onSubmit={(message) => void handlePromptSubmit(message)} />
-              {submittingPrompt ? (
+              <ChatPromptBar
+                onSubmit={(message, mode) => void handlePromptSubmit(message, mode)}
+              />
+              {submittingPrompt && messages.length === 0 ? (
                 <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/70">
                   <Spinner className="size-4 text-muted-foreground" />
                 </div>

@@ -17,10 +17,17 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
+export type PromptMode = "default" | "query"
+
 type ChatPromptBarProps = {
   placeholder?: string
   className?: string
-  onSubmit?: (message: string) => void
+  onSubmit?: (message: string, mode: PromptMode) => void
+}
+
+const MODE_LABELS: Record<PromptMode, string> = {
+  default: "Default",
+  query: "Quick question",
 }
 
 export function ChatPromptBar({
@@ -29,12 +36,13 @@ export function ChatPromptBar({
   onSubmit,
 }: ChatPromptBarProps) {
   const [value, setValue] = useState("")
+  const [mode, setMode] = useState<PromptMode>("default")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   function handleSubmit() {
     const trimmed = value.trim()
     if (!trimmed) return
-    onSubmit?.(trimmed)
+    onSubmit?.(trimmed, mode)
     setValue("")
   }
 
@@ -83,14 +91,20 @@ export function ChatPromptBar({
                 size="sm"
                 className="h-7 gap-1 px-2 text-xs font-normal"
               >
-                Default
+                {MODE_LABELS[mode]}
                 <RiArrowDownSLine className="size-3.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem>Default</DropdownMenuItem>
-              <DropdownMenuItem>Start a close task</DropdownMenuItem>
-              <DropdownMenuItem>Quick question</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setMode("default")}>
+                Default
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setMode("default")}>
+                Start a close task
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setMode("query")}>
+                Quick question
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

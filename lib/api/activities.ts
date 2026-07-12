@@ -59,7 +59,7 @@ export async function createActivity(
 
 export async function submitActivityPrompt(
   token: string | null,
-  body: { clientId: string; prompt: string },
+  body: { clientId: string; prompt: string; mode?: "default" | "query" },
 ): Promise<ActivityPromptResponse> {
   return backendRequest<ActivityPromptResponse>("/api/activities/prompt", {
     method: "POST",

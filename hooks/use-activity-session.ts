@@ -163,23 +163,26 @@ export function useActivitySession(
   useEffect(() => {
     if (!initialPrompt || initialPromptSent || isLoading) return;
 
-    if (messages.some((message) => message.role === "user")) {
-      return;
-    }
-
     const prompt = initialPrompt.trim();
     if (!prompt) return;
 
+    // The engine seeds the request as the first user message when it proposes an
+    // activity, so don't post a duplicate — but still open the stream so the
+    // first planning run streams in. Only post here if nothing seeded it.
+    const alreadySeeded = messages.some((message) => message.role === "user");
+
     let cancelled = false;
 
-    async function sendInitialPrompt() {
+    async function bootstrapFirstRun() {
       setIsAwaitingResponse(true);
       try {
         const token = await getToken();
         if (cancelled) return;
 
-        await postActivityMessage(token, activityIdRef.current, prompt);
-        if (cancelled) return;
+        if (!alreadySeeded) {
+          await postActivityMessage(token, activityIdRef.current, prompt);
+          if (cancelled) return;
+        }
 
         setInitialPromptSent(true);
         await refreshMessages();
@@ -191,7 +194,7 @@ export function useActivitySession(
       }
     }
 
-    void sendInitialPrompt();
+    void bootstrapFirstRun();
     return () => {
       cancelled = true;
     };
