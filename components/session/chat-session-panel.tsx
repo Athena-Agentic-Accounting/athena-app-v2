@@ -257,6 +257,11 @@ export function ChatSessionPanel({
                   const lastProgressIndex = all.findLastIndex((e) => e.event.type === "progress")
                   return index === lastProgressIndex
                 }
+                // If an approval gate exists, hide redundant standalone journal entry review cards
+                if (event.event.type === "journal_entry_review") {
+                  const hasApprovalGate = all.some((e) => e.event.type === "approval_gate")
+                  if (hasApprovalGate) return false
+                }
                 // If it's an approval gate, only show the latest occurrence for that gateId
                 if (event.event.type === "approval_gate") {
                   const gateId = event.event.data.gateId
@@ -269,37 +274,63 @@ export function ChatSessionPanel({
                 }
                 return true
               })
-              .map((event) => (
-                <div key={event.id} className="flex w-full justify-start">
-                  <div className="w-full max-w-[min(100%,42rem)]">
-                    <CardRenderer
-                      event={
-                        event.event.type === "question_choice"
-                          ? {
-                              ...event,
-                              event: {
-                                ...event.event,
-                                data: {
-                                  ...event.event.data,
-                                  selectedOptionId: questionChoice.selectedOptionId,
-                                  stepIndex: questionChoice.stepIndex,
-                                },
-                              },
-                            }
-                          : event
+              .map((event, _idx, all) => {
+                // If approval gate is missing lines in payload, merge from preceding journal_entry_review
+                let enrichedEvent = event
+                if (event.event.type === "approval_gate") {
+                  const jeEvent = streamEvents.find((e) => e.event.type === "journal_entry_review")
+                  if (jeEvent && jeEvent.event.type === "journal_entry_review") {
+                    const payload = event.event.data.payload ?? {}
+                    if (!payload.lines && !payload.journalEntries) {
+                      enrichedEvent = {
+                        ...event,
+                        event: {
+                          ...event.event,
+                          data: {
+                            ...event.event.data,
+                            payload: {
+                              ...payload,
+                              journalEntries: [jeEvent.event.data],
+                            },
+                          },
+                        },
                       }
-                      options={{
-                        ...cardOptions,
-                        isLive: event.event.type === "progress" && isAwaitingResponse,
-                        decision:
-                          event.event.type === "approval_gate" && event.event.data.gateId
-                            ? decidedMap[event.event.data.gateId]
-                            : undefined,
-                      }}
-                    />
+                    }
+                  }
+                }
+
+                return (
+                  <div key={event.id} className="flex w-full justify-start">
+                    <div className="w-full max-w-[min(100%,42rem)]">
+                      <CardRenderer
+                        event={
+                          enrichedEvent.event.type === "question_choice"
+                            ? {
+                                ...enrichedEvent,
+                                event: {
+                                  ...enrichedEvent.event,
+                                  data: {
+                                    ...enrichedEvent.event.data,
+                                    selectedOptionId: questionChoice.selectedOptionId,
+                                    stepIndex: questionChoice.stepIndex,
+                                  },
+                                },
+                              }
+                            : enrichedEvent
+                        }
+                        options={{
+                          ...cardOptions,
+                          isLive: enrichedEvent.event.type === "progress" && isAwaitingResponse,
+                          decision:
+                            enrichedEvent.event.type === "approval_gate" && enrichedEvent.event.data.gateId
+                              ? decidedMap[enrichedEvent.event.data.gateId]
+                              : undefined,
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
           </div>
 
           {isAwaitingResponse && streamEvents.length === 0 ? (
