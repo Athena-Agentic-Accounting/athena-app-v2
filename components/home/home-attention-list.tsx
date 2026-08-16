@@ -87,29 +87,15 @@ function HomeAttentionExpandableCard({
   onToggle: () => void
   onApprove: () => Promise<void>
 }) {
-  const tableRows = useMemo(() => {
-    if (!item.journalEntry) return []
-
-    const lines = item.journalEntry.lines.map((line) => ({
-      account: line.account,
-      debit: line.debit,
-      credit: line.credit,
-      description: line.description ?? "",
-    }))
-
-    const totalDebit = sumJournalSide(item.journalEntry.lines, "debit")
-    const totalCredit = sumJournalSide(item.journalEntry.lines, "credit")
-
-    return [
-      ...lines,
-      markTotalRow({
-        account: "Total",
-        debit: totalDebit,
-        credit: totalCredit,
-        description: "",
-      }),
-    ]
-  }, [item.journalEntry])
+  const entries = useMemo(() => {
+    if (item.journalEntries && item.journalEntries.length > 0) {
+      return item.journalEntries
+    }
+    if (item.journalEntry) {
+      return [item.journalEntry]
+    }
+    return []
+  }, [item.journalEntries, item.journalEntry])
 
   async function handleApprove(event: React.MouseEvent) {
     event.stopPropagation()
@@ -180,17 +166,59 @@ function HomeAttentionExpandableCard({
             </Button>
           </div>
 
-          <div className="px-4 pb-4">
-            {item.journalEntry ? (
-              <GenUITable
-                columns={[
-                  { key: "account", label: "Account", format: "text" },
-                  { key: "debit", label: "Debit", align: "left", format: "currency" },
-                  { key: "credit", label: "Credit", align: "left", format: "currency" },
-                  { key: "description", label: "Description", format: "text" },
-                ]}
-                rows={tableRows}
-              />
+          <div className="space-y-4 px-4 pb-4">
+            {entries.length > 0 ? (
+              entries.map((entry, idx) => {
+                const lines = entry.lines.map((line) => ({
+                  account: line.account,
+                  debit: line.debit,
+                  credit: line.credit,
+                  description: line.description ?? "",
+                }))
+
+                const totalDebit = sumJournalSide(entry.lines, "debit")
+                const totalCredit = sumJournalSide(entry.lines, "credit")
+                const rows = [
+                  ...lines,
+                  markTotalRow({
+                    account: "Total",
+                    debit: totalDebit,
+                    credit: totalCredit,
+                    description: "",
+                  }),
+                ]
+
+                return (
+                  <div key={idx} className="rounded-lg border border-border/60 p-3 bg-muted/20">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
+                      <div className="flex items-center gap-2">
+                        <span className="text-foreground">{entry.memo ?? entry.title ?? `Journal Entry #${idx + 1}`}</span>
+                        {entry.date ? (
+                          <span className="text-muted-foreground">({entry.date})</span>
+                        ) : null}
+                      </div>
+                      {entry.reversing ? (
+                        <span className="rounded bg-amber-500/10 px-2 py-0.5 text-xs text-amber-600 font-normal">
+                          Auto-Reverses on {entry.reversalDate ?? "next period"}
+                        </span>
+                      ) : (
+                        <span className="rounded bg-slate-500/10 px-2 py-0.5 text-xs text-muted-foreground font-normal">
+                          Non-Reversing
+                        </span>
+                      )}
+                    </div>
+                    <GenUITable
+                      columns={[
+                        { key: "account", label: "Account", format: "text" },
+                        { key: "debit", label: "Debit", align: "left", format: "currency" },
+                        { key: "credit", label: "Credit", align: "left", format: "currency" },
+                        { key: "description", label: "Description", format: "text" },
+                      ]}
+                      rows={rows}
+                    />
+                  </div>
+                )
+              })
             ) : item.approvalGate ? (
               <ApprovalGateCard
                 data={item.approvalGate}
@@ -204,3 +232,4 @@ function HomeAttentionExpandableCard({
     </article>
   )
 }
+

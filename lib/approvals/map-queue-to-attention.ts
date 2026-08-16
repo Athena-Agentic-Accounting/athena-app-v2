@@ -6,7 +6,11 @@ import {
   resolveApprovalGateType,
   resolvePendingAction,
 } from "@/lib/api/approvals"
-import { journalEntryFromPendingAction, normalizeGateType } from "@/lib/genui/gate-types"
+import {
+  extractJournalEntriesFromPayload,
+  journalEntryFromPendingAction,
+  normalizeGateType,
+} from "@/lib/genui/gate-types"
 import type { ApprovalGateCardData, JournalEntryReviewData } from "@/lib/genui/types"
 
 export type HomeAttentionItem = {
@@ -18,13 +22,8 @@ export type HomeAttentionItem = {
   title: string
   approveLabel: string
   journalEntry?: JournalEntryReviewData
+  journalEntries?: JournalEntryReviewData[]
   approvalGate?: ApprovalGateCardData
-}
-
-function isJournalEntryPayload(
-  payload: Record<string, unknown>,
-): payload is JournalEntryReviewData {
-  return Array.isArray(payload.lines)
 }
 
 function defaultApproveLabel(gateType: string): string {
@@ -49,22 +48,21 @@ export function mapApprovalQueueItemToAttention(item: ApprovalQueueItem): HomeAt
     approveLabel: defaultApproveLabel(gateType),
   }
 
-  if (isJournalEntryPayload(item.payload)) {
+  // Extract any journal entries from payload (single or multiple)
+  const payloadEntries = extractJournalEntriesFromPayload(item.payload)
+  if (payloadEntries.length > 0) {
     return {
       ...base,
-      journalEntry: {
-        date: item.payload.date ?? "",
-        lines: item.payload.lines,
-        memo: item.payload.memo,
-        title: item.payload.title,
-      },
+      gateType: "journal_entry",
+      journalEntry: payloadEntries[0],
+      journalEntries: payloadEntries,
     }
   }
 
   if (gateType === "journal_entry") {
     const journalEntry = journalEntryFromPendingAction(pendingAction.args)
     if (journalEntry) {
-      return { ...base, journalEntry }
+      return { ...base, journalEntry, journalEntries: [journalEntry] }
     }
   }
 
@@ -83,3 +81,4 @@ export function mapApprovalQueueItemToAttention(item: ApprovalQueueItem): HomeAt
 export function mapApprovalQueueToAttention(items: ApprovalQueueItem[]): HomeAttentionItem[] {
   return items.map(mapApprovalQueueItemToAttention)
 }
+

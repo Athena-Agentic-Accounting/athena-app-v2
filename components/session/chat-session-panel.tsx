@@ -249,49 +249,52 @@ export function ChatSessionPanel({
             <ChatMessageBubble key={message.id} message={message} />
           ))}
 
-          {isAwaitingResponse ? (
-            progressLabel ? (
-              <div className="flex justify-start">
-                <p className="max-w-[85%] text-xs text-muted-foreground">{progressLabel}</p>
-              </div>
-            ) : null
-          ) : null}
-
-          {isAwaitingResponse ? <ChatTypingIndicator label={typingLabel} /> : null}
-
           <div className="space-y-4">
-            {streamEvents.map((event) => (
-              <div key={event.id} className="flex w-full justify-start">
-                <div className="w-full max-w-[min(100%,42rem)]">
-                  <CardRenderer
-                    event={
-                      event.event.type === "question_choice"
-                        ? {
-                            ...event,
-                            event: {
-                              ...event.event,
-                              data: {
-                                ...event.event.data,
-                                selectedOptionId: questionChoice.selectedOptionId,
-                                stepIndex: questionChoice.stepIndex,
+            {streamEvents
+              .filter((event, index, all) => {
+                // If it's a progress event, only show the latest progress event in the stream
+                if (event.event.type === "progress") {
+                  const lastProgressIndex = all.findLastIndex((e) => e.event.type === "progress")
+                  return index === lastProgressIndex
+                }
+                return true
+              })
+              .map((event) => (
+                <div key={event.id} className="flex w-full justify-start">
+                  <div className="w-full max-w-[min(100%,42rem)]">
+                    <CardRenderer
+                      event={
+                        event.event.type === "question_choice"
+                          ? {
+                              ...event,
+                              event: {
+                                ...event.event,
+                                data: {
+                                  ...event.event.data,
+                                  selectedOptionId: questionChoice.selectedOptionId,
+                                  stepIndex: questionChoice.stepIndex,
+                                },
                               },
-                            },
-                          }
-                        : event
-                    }
-                    options={{
-                      ...cardOptions,
-                      isLive: event.event.type === "progress" && isAwaitingResponse,
-                      decision:
-                        event.event.type === "approval_gate" && event.event.data.gateId
-                          ? decidedMap[event.event.data.gateId]
-                          : undefined,
-                    }}
-                  />
+                            }
+                          : event
+                      }
+                      options={{
+                        ...cardOptions,
+                        isLive: event.event.type === "progress" && isAwaitingResponse,
+                        decision:
+                          event.event.type === "approval_gate" && event.event.data.gateId
+                            ? decidedMap[event.event.data.gateId]
+                            : undefined,
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
+
+          {isAwaitingResponse && streamEvents.length === 0 ? (
+            <ChatTypingIndicator label={typingLabel} />
+          ) : null}
 
           <div ref={scrollAnchorRef} />
         </div>

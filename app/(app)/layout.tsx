@@ -11,13 +11,17 @@ export default async function AppLayout({
   children: React.ReactNode
 }>) {
   const { userId } = await auth()
-  if (!userId) redirect("/auth")
+  if (!userId) {
+    return <AppShell>{children}</AppShell>
+  }
 
   const user = await currentUser()
   const meta = getAthenaMetadata(
     user?.unsafeMetadata as Record<string, unknown> | undefined,
   )
-  if (!meta?.onboardingComplete) redirect("/onboarding")
+  if (!meta?.onboardingComplete && process.env.NODE_ENV === "production") {
+    redirect("/onboarding")
+  }
 
   return (
     <RequireActiveOrg>

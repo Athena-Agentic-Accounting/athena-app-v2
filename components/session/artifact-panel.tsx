@@ -170,7 +170,7 @@ export function ArtifactPanel({
             Delete skill
           </Button>
           <Button type="button" variant="outline" size="sm">
-            Edit with Ramp
+            Edit with Athena
           </Button>
           <Button type="button" size="sm" disabled>
             Save

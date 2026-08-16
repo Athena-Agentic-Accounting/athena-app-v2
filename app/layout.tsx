@@ -25,7 +25,13 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${stackSansHeadline.variable} ${stackSansHeadline.className} h-full antialiased`}
       >
-        <body className="h-full overflow-hidden bg-background font-sans text-foreground">
+        {/* Browser extensions (Grammarly et al.) inject attributes onto <body>
+            before React hydrates, which React reports as a hydration mismatch.
+            Nothing we render differs between server and client here. */}
+        <body
+          suppressHydrationWarning
+          className="h-full overflow-hidden bg-background font-sans text-foreground"
+        >
           <ThemeProvider>
             <TooltipProvider>{children}</TooltipProvider>
             <Toaster

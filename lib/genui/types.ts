@@ -49,6 +49,8 @@ export type JournalEntryReviewData = {
   lines: JournalEntryLine[]
   memo?: string
   title?: string
+  reversing?: boolean
+  reversalDate?: string
 }
 
 export type ChecklistCardData = {

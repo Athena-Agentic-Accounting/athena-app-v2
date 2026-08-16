@@ -4,6 +4,9 @@ import type { JournalEntryLine, JournalEntryReviewData } from "@/lib/genui/types
 // card renderers; normalize to the frontend's canonical names.
 const GATE_TYPE_ALIASES: Record<string, string> = {
   journal_entry_post: "journal_entry",
+  "qbo.post_journal_entry": "journal_entry",
+  "quickbooks.journal_entry.create": "journal_entry",
+  "quickbooks.post_journal_entry": "journal_entry",
   transaction_categorize: "transaction_categorization",
 }
 
@@ -29,11 +32,63 @@ type QuickBooksJournalLine = {
   }
 }
 
+export function extractJournalEntriesFromPayload(
+  payload: Record<string, unknown>,
+): JournalEntryReviewData[] {
+  if (!payload || typeof payload !== "object") return []
+
+  // Check if payload has an array of entries
+  if (Array.isArray(payload.entries) && payload.entries.length > 0) {
+    return payload.entries
+      .filter((e) => e && typeof e === "object" && Array.isArray((e as any).lines))
+      .map((e: any) => ({
+        date: typeof e.date === "string" ? e.date : "",
+        memo: typeof e.memo === "string" ? e.memo : undefined,
+        title: typeof e.title === "string" ? e.title : undefined,
+        reversing: typeof e.reversing === "boolean" ? e.reversing : undefined,
+        reversalDate: typeof e.reversalDate === "string" ? e.reversalDate : undefined,
+        lines: (e.lines as any[]).map((l: any) => ({
+          account: String(l.account ?? "Unknown Account"),
+          debit: typeof l.debit === "number" ? l.debit : (l.debit ? Number(l.debit) : undefined),
+          credit: typeof l.credit === "number" ? l.credit : (l.credit ? Number(l.credit) : undefined),
+          description: typeof l.description === "string" ? l.description : undefined,
+        })),
+      }))
+  }
+
+  // Check if payload itself is a single journal entry with lines
+  if (Array.isArray(payload.lines) && payload.lines.length > 0) {
+    return [
+      {
+        date: typeof payload.date === "string" ? payload.date : "",
+        memo: typeof payload.memo === "string" ? payload.memo : undefined,
+        title: typeof payload.title === "string" ? payload.title : undefined,
+        reversing: typeof payload.reversing === "boolean" ? payload.reversing : undefined,
+        reversalDate: typeof payload.reversalDate === "string" ? payload.reversalDate : undefined,
+        lines: (payload.lines as any[]).map((l: any) => ({
+          account: String(l.account ?? "Unknown Account"),
+          debit: typeof l.debit === "number" ? l.debit : (l.debit ? Number(l.debit) : undefined),
+          credit: typeof l.credit === "number" ? l.credit : (l.credit ? Number(l.credit) : undefined),
+          description: typeof l.description === "string" ? l.description : undefined,
+        })),
+      },
+    ]
+  }
+
+  return []
+}
+
 // journal_entry_post gates carry the entry as QuickBooks-format lines in
 // pendingAction.args.Line, not in payload.
 export function journalEntryFromPendingAction(
   args: Record<string, unknown>,
 ): JournalEntryReviewData | null {
+  if (!args || typeof args !== "object") return null
+
+  // Check for Athena canonical entries in pendingAction
+  const extracted = extractJournalEntriesFromPayload(args)
+  if (extracted.length > 0) return extracted[0]
+
   const rawLines = args.Line
   if (!Array.isArray(rawLines) || rawLines.length === 0) return null
 
@@ -52,3 +107,4 @@ export function journalEntryFromPendingAction(
 
   return { date: "", lines }
 }
+

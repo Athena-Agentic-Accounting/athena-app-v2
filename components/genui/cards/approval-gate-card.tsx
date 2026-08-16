@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { decideApproval } from "@/lib/api/approvals"
 import {
+  extractJournalEntriesFromPayload,
   journalEntryFromPendingAction,
   KNOWN_GATE_TYPES,
   normalizeGateType,
@@ -39,11 +40,31 @@ type ApprovalGateCardProps = {
   ) => Promise<void> | void
 }
 
-function isJournalEntryPayload(payload: Record<string, unknown>): payload is JournalEntryReviewData {
-  return Array.isArray(payload.lines) && typeof payload.date === "string"
-}
-
 function GenericPayloadList({ payload }: { payload: Record<string, unknown> }) {
+  // Check if payload contains an inner journal entry structure before dumping
+  const extracted = extractJournalEntriesFromPayload(payload)
+  if (extracted.length > 0) {
+    return (
+      <div className="space-y-4">
+        {extracted.map((entry, idx) => (
+          <div key={idx} className="rounded-lg border border-border/60 p-3 bg-muted/20">
+            {entry.memo || entry.title ? (
+              <div className="mb-2 text-xs font-semibold text-foreground">
+                {entry.memo ?? entry.title}
+                {entry.reversing ? (
+                  <span className="ml-2 rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 font-normal">
+                    Auto-Reverses ({entry.reversalDate ?? "next month"})
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            <JournalEntryCardBody data={entry} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <dl className="space-y-2 pl-2 text-sm">
       {Object.entries(payload).map(([key, value]) => (
@@ -58,19 +79,50 @@ function GenericPayloadList({ payload }: { payload: Record<string, unknown> }) {
   )
 }
 
-function resolveJournalEntryData(data: ApprovalGateCardData): JournalEntryReviewData | null {
-  if (isJournalEntryPayload(data.payload)) return data.payload
-  if (normalizeGateType(data.gateType) !== "journal_entry") return null
-  return journalEntryFromPendingAction(data.pendingAction?.args ?? {})
+function resolveJournalEntries(data: ApprovalGateCardData): JournalEntryReviewData[] {
+  // 1. Try extracting from payload (supports multiple entries)
+  const fromPayload = extractJournalEntriesFromPayload(data.payload)
+  if (fromPayload.length > 0) return fromPayload
+
+  // 2. Try extracting from pendingAction args
+  if (data.pendingAction?.args) {
+    const fromAction = extractJournalEntriesFromPayload(data.pendingAction.args)
+    if (fromAction.length > 0) return fromAction
+
+    const qbEntry = journalEntryFromPendingAction(data.pendingAction.args)
+    if (qbEntry) return [qbEntry]
+  }
+
+  return []
 }
 
 function renderPayload(data: ApprovalGateCardData) {
   const gateType = normalizeGateType(data.gateType)
   const { payload } = data
 
-  if (gateType === "journal_entry") {
-    const journalEntry = resolveJournalEntryData(data)
-    if (journalEntry) return <JournalEntryCardBody data={journalEntry} />
+  const journalEntries = resolveJournalEntries(data)
+  if (gateType === "journal_entry" || journalEntries.length > 0) {
+    if (journalEntries.length > 0) {
+      return (
+        <div className="space-y-4">
+          {journalEntries.map((entry, idx) => (
+            <div key={idx} className="rounded-lg border border-border/60 p-3 bg-muted/20">
+              {entry.memo || entry.title ? (
+                <div className="mb-2 flex items-center justify-between text-xs font-semibold text-foreground">
+                  <span>{entry.memo ?? entry.title}</span>
+                  {entry.reversing ? (
+                    <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 font-normal">
+                      Auto-Reverses ({entry.reversalDate ?? "next month"})
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+              <JournalEntryCardBody data={entry} />
+            </div>
+          ))}
+        </div>
+      )
+    }
   }
 
   if (gateType === "transaction_categorization" && Array.isArray(payload.transactions)) {
@@ -106,6 +158,11 @@ function renderPayload(data: ApprovalGateCardData) {
   }
 
   return <GenericPayloadList payload={payload} />
+}
+
+function resolveJournalEntryData(data: ApprovalGateCardData): JournalEntryReviewData | null {
+  const entries = resolveJournalEntries(data)
+  return entries.length > 0 ? entries[0] : null
 }
 
 export function ApprovalGateCard({
@@ -213,7 +270,7 @@ export function ApprovalGateCard({
             editable
             editedLines={editedLines}
             onLineChange={(index, patch) =>
-              setEditedLines((current) =>
+              setEditedLines((current: JournalEntryReviewData["lines"]) =>
                 current.map((line, lineIndex) =>
                   lineIndex === index ? { ...line, ...patch } : line,
                 ),
