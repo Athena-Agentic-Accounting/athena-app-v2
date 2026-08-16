@@ -100,10 +100,24 @@ export function ChatSessionPanel({
       },
       questionChoice: {
         selectedOptionId: questionChoice.selectedOptionId,
-        onSelect: (optionId: string) =>
-          setQuestionChoice((current) => ({ ...current, selectedOptionId: optionId })),
-        onSkip: () =>
-          setQuestionChoice((current) => ({ ...current, selectedOptionId: undefined })),
+        onSelect: (optionId: string) => {
+          setQuestionChoice((current) => ({ ...current, selectedOptionId: optionId }))
+          if (onSendMessage) {
+            const questionEvent = streamEvents.find((e) => e.event.type === "question_choice")
+            let label = optionId
+            if (questionEvent && questionEvent.event.type === "question_choice") {
+              const match = questionEvent.event.data.options.find((opt) => opt.id === optionId)
+              if (match) label = match.label
+            }
+            void onSendMessage(label)
+          }
+        },
+        onSkip: () => {
+          setQuestionChoice((current) => ({ ...current, selectedOptionId: undefined }))
+          if (onSendMessage) {
+            void onSendMessage("Skip")
+          }
+        },
         onStepChange: (direction: "prev" | "next") =>
           setQuestionChoice((current) => ({
             ...current,
@@ -114,7 +128,7 @@ export function ChatSessionPanel({
           })),
       },
     }),
-    [activityId, onApprovalDecision, questionChoice.selectedOptionId, questionChoice.stepIndex],
+    [activityId, onApprovalDecision, onSendMessage, streamEvents, questionChoice.selectedOptionId, questionChoice.stepIndex],
   )
 
   const latestProgress = useMemo(() => {
