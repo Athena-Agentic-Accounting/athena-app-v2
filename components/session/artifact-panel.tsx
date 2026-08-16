@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { RiAddLine, RiCloseLine } from "@remixicon/react";
 
 import { MarkdownContent } from "@/components/session/markdown-content";
 import { PlanReviewActions } from "@/components/session/plan-review-actions";
@@ -33,9 +32,6 @@ export function ArtifactPanel({
   const [internalActiveTabId, setInternalActiveTabId] = useState(
     artifact.activeTabId,
   );
-  const [openTabIds, setOpenTabIds] = useState(() =>
-    artifact.tabs.map((tab) => tab.id),
-  );
   const [planDecided, setPlanDecided] = useState(false);
 
   const activeTabId = controlledActiveTabId ?? internalActiveTabId;
@@ -50,24 +46,6 @@ export function ArtifactPanel({
       artifact.tabs.find((tab) => tab.id === activeTabId) ?? artifact.tabs[0],
     [activeTabId, artifact.tabs],
   );
-
-  const openTabs = useMemo(
-    () => artifact.tabs.filter((tab) => openTabIds.includes(tab.id)),
-    [artifact.tabs, openTabIds],
-  );
-
-  function closeTab(tabId: string) {
-    setOpenTabIds((current) => {
-      const next = current.filter((id) => id !== tabId);
-      if (next.length === 0) return current;
-      return next;
-    });
-
-    if (activeTabId === tabId) {
-      const nextTabId = openTabIds.filter((id) => id !== tabId).at(-1);
-      if (nextTabId) setActiveTabId(nextTabId);
-    }
-  }
 
   function handlePlanDecision(decision: PlanReviewDecision) {
     if (activeTab?.kind !== "plan_review") return;
@@ -86,47 +64,39 @@ export function ArtifactPanel({
         className,
       )}
     >
-      <div className="flex shrink-0 items-center gap-1 border-b border-border/70 px-3 py-2">
-        {openTabs.map((tab) => {
-          const active = tab.id === activeTabId;
+      {/* Ramp-style Deliverable Workpaper Header */}
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-5 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="text-sm font-medium text-foreground">
+            {activeTab.title || activeTab.slug || "Deliverable"}
+          </span>
+          <span className="rounded-md border border-border px-2 py-0.5 text-[11px] font-normal text-muted-foreground">
+            Draft · Requires review
+          </span>
+        </div>
 
-          return (
-            <div
-              key={tab.id}
-              className={cn(
-                "group flex max-w-[220px] items-center gap-1 rounded-md border px-2.5 py-1 text-xs",
-                active
-                  ? "border-border/70 bg-muted/40 text-foreground"
-                  : "border-transparent text-muted-foreground hover:bg-muted/30",
-              )}
-            >
-              <button
-                type="button"
-                className="min-w-0 flex-1 truncate text-left"
-                onClick={() => setActiveTabId(tab.id)}
-              >
-                {tab.slug}
-              </button>
-              {openTabs.length > 1 ? (
+        {artifact.tabs.length > 1 ? (
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-0.5">
+            {artifact.tabs.map((tab) => {
+              const active = tab.id === activeTabId;
+              return (
                 <button
+                  key={tab.id}
                   type="button"
-                  className="flex size-4 shrink-0 items-center justify-center rounded opacity-60 hover:bg-background hover:opacity-100"
-                  aria-label={`Close ${tab.title}`}
-                  onClick={() => closeTab(tab.id)}
+                  onClick={() => setActiveTabId(tab.id)}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-xs font-normal transition-colors",
+                    active
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
                 >
-                  <RiCloseLine className="size-3.5" />
+                  {tab.title || tab.slug}
                 </button>
-              ) : null}
-            </div>
-          );
-        })}
-        <button
-          type="button"
-          className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40"
-          aria-label="Open tab"
-        >
-          <RiAddLine className="size-4" />
-        </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       <ScrollArea className="min-h-0 flex-1">

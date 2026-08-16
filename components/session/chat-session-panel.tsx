@@ -257,6 +257,16 @@ export function ChatSessionPanel({
                   const lastProgressIndex = all.findLastIndex((e) => e.event.type === "progress")
                   return index === lastProgressIndex
                 }
+                // If it's an approval gate, only show the latest occurrence for that gateId
+                if (event.event.type === "approval_gate") {
+                  const gateId = event.event.data.gateId
+                  if (gateId) {
+                    const lastGateIndex = all.findLastIndex(
+                      (e) => e.event.type === "approval_gate" && e.event.data.gateId === gateId,
+                    )
+                    return index === lastGateIndex
+                  }
+                }
                 return true
               })
               .map((event) => (

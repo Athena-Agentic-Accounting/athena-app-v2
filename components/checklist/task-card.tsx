@@ -149,13 +149,15 @@ export function TaskCard({
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CalendarIcon className="size-3.5" />
-            {task.dueDate}
-          </div>
-          <div className="flex -space-x-2">
+          {task.dueDate && task.dueDate !== "-" ? (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarIcon className="size-3.5" />
+              {task.dueDate}
+            </div>
+          ) : <div />}
+          <div className="flex -space-x-1.5">
             {task.assignees.map((initials) => (
-              <Avatar key={initials} className="size-6 border-2 border-background">
+              <Avatar key={initials} className="size-5 border-2 border-background">
                 <AvatarFallback className="bg-muted text-[10px] font-normal text-muted-foreground">
                   {initials}
                 </AvatarFallback>

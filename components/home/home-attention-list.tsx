@@ -24,11 +24,19 @@ export function HomeAttentionList() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [submittingId, setSubmittingId] = useState<string | null>(null)
 
-  const visibleItems = items
+  const visibleItems = useMemo(() => {
+    const seen = new Set<string>()
+    return items.filter((item) => {
+      const key = `${item.activityId}-${item.gateId}-${item.title}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [items])
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center rounded-lg border border-dashed border-border px-4 py-8">
+      <div className="flex items-center justify-center rounded-xl border border-border bg-card px-4 py-8">
         <Spinner className="size-4 text-muted-foreground" />
       </div>
     )
@@ -36,14 +44,14 @@ export function HomeAttentionList() {
 
   if (visibleItems.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+      <p className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
         Nothing needs your attention right now.
       </p>
     )
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {visibleItems.map((item, index) => (
         <HomeAttentionExpandableCard
           key={item.id}
@@ -103,22 +111,22 @@ function HomeAttentionExpandableCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-background">
-      <div className="flex items-start justify-between gap-3 px-4 py-3">
+    <article className="overflow-hidden rounded-xl border border-border bg-card transition-colors">
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-start justify-between gap-3 text-left hover:opacity-80"
+          className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left hover:opacity-80"
           onClick={onToggle}
           aria-expanded={expanded}
         >
-          <div className="min-w-0 space-y-1">
-            <h3 className="text-sm font-normal text-foreground">{item.title}</h3>
-            <p className="text-xs text-muted-foreground">{item.activityTitle}</p>
+          <div className="min-w-0 space-y-0.5">
+            <h3 className="text-sm font-medium text-foreground">{item.title}</h3>
+            <p className="line-clamp-1 text-xs text-muted-foreground">{item.activityTitle}</p>
           </div>
 
           <RiArrowDownSLine
             className={cn(
-              "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform",
+              "size-4 shrink-0 text-muted-foreground transition-transform",
               expanded ? "rotate-0" : "-rotate-90",
             )}
           />
@@ -127,7 +135,7 @@ function HomeAttentionExpandableCard({
         <Button
           type="button"
           size="sm"
-          className="hidden h-8 shrink-0 px-3 text-xs sm:inline-flex"
+          className="hidden h-8 shrink-0 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:inline-flex"
           disabled={submitting}
           onClick={handleApprove}
         >

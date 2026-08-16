@@ -27,41 +27,61 @@ function formatCellValue(value: unknown, format: TableColumnDef["format"] = "tex
 
 export function GenUITable({ columns, rows, className }: GenUITableProps) {
   return (
-    <div className={cn("overflow-x-auto", className)}>
-      <table className="w-full border-collapse text-sm">
+    <div className={cn("w-full overflow-x-auto", className)}>
+      <table className="w-full text-left text-sm">
         <thead>
-          <tr>
-            {columns.map((column) => (
-              <th
-                key={column.key}
-                className={cn(
-                  "border border-border/70 bg-muted/45 px-3 py-2.5 text-sm font-normal text-foreground",
-                  column.align === "right" ? "text-right" : "text-left",
-                )}
-              >
-                {column.label}
-              </th>
-            ))}
+          <tr className="border-b border-border">
+            {columns.map((column) => {
+              const isNumeric =
+                column.align === "right" ||
+                column.format === "currency" ||
+                column.format === "accounting"
+
+              return (
+                <th
+                  key={column.key}
+                  className={cn(
+                    "px-3 py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground",
+                    isNumeric ? "text-right" : "text-left",
+                  )}
+                >
+                  {column.label}
+                </th>
+              )
+            })}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-border/40">
           {rows.map((row, rowIndex) => {
             const totalRow = isTotalRow(row)
 
             return (
-              <tr key={rowIndex}>
-                {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    className={cn(
-                      "border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground",
-                      column.align === "right" ? "text-right tabular-nums" : "text-left",
-                      totalRow && "font-semibold",
-                    )}
-                  >
-                    {formatCellValue(row[column.key], column.format)}
-                  </td>
-                ))}
+              <tr
+                key={rowIndex}
+                className={cn(
+                  "transition-colors",
+                  totalRow ? "border-t border-b border-border font-medium bg-muted/20" : "hover:bg-muted/10",
+                )}
+              >
+                {columns.map((column) => {
+                  const isNumeric =
+                    column.align === "right" ||
+                    column.format === "currency" ||
+                    column.format === "accounting"
+
+                  return (
+                    <td
+                      key={column.key}
+                      className={cn(
+                        "px-3 py-2.5 text-sm text-foreground",
+                        isNumeric ? "text-right font-mono tabular-nums" : "text-left",
+                        totalRow && "font-medium text-foreground",
+                      )}
+                    >
+                      {formatCellValue(row[column.key], column.format)}
+                    </td>
+                  )
+                })}
               </tr>
             )
           })}

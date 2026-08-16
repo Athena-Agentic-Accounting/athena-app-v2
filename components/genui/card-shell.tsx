@@ -46,17 +46,17 @@ export function CardShell({ type, title, isLive = false, children, className }: 
   return (
     <article
       className={cn(
-        "overflow-hidden rounded-lg border bg-background p-4",
-        variant === "neutral" && "border-border/70",
-        variant === "attention" && "border-amber-300 bg-amber-50/40",
-        variant === "approval" && "border-border/70 border-l-4 border-l-red-500",
+        "overflow-hidden rounded-xl border bg-card p-4 transition-colors",
+        variant === "neutral" && "border-border",
+        variant === "attention" && "border-border-strong bg-muted/20",
+        variant === "approval" && "border-border-strong shadow-xs",
         className,
       )}
     >
       <header
         className={cn(
           "mb-3 flex items-center gap-2 text-sm font-medium",
-          variant === "attention" && "text-amber-900",
+          variant === "attention" && "text-foreground",
           variant === "approval" && "text-foreground",
           variant === "neutral" && "text-foreground",
         )}
@@ -66,8 +66,8 @@ export function CardShell({ type, title, isLive = false, children, className }: 
             "size-4 shrink-0",
             type === "progress" && isLive && "animate-spin text-muted-foreground",
             type === "progress" && !isLive && "text-muted-foreground",
-            variant === "attention" && "text-amber-600",
-            variant === "approval" && "text-red-600",
+            variant === "attention" && "text-foreground",
+            variant === "approval" && "text-foreground",
             variant === "neutral" && "text-muted-foreground",
           )}
         />

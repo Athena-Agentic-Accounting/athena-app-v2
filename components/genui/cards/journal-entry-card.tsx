@@ -27,37 +27,37 @@ export function JournalEntryCardBody({
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="w-full overflow-x-auto">
+        <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-border/60 text-xs text-muted-foreground">
-              <th className="px-2 py-2 text-left font-medium">Account</th>
-              <th className="px-2 py-2 text-right font-medium">Debit</th>
-              <th className="px-2 py-2 text-right font-medium">Credit</th>
+            <tr className="border-b border-border text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <th className="w-[50%] min-w-[130px] px-2.5 py-2 text-left">Account</th>
+              <th className="w-[25%] min-w-[85px] px-2.5 py-2 text-right">Debit</th>
+              <th className="w-[25%] min-w-[85px] px-2.5 py-2 text-right">Credit</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border/40">
             {lines.map((line, index) => (
-              <tr key={`${line.account}-${index}`} className="border-b border-border/40 last:border-0">
-                <td className="px-2 py-2 align-top">
+              <tr key={`${line.account}-${index}`} className="transition-colors hover:bg-muted/10">
+                <td className="px-2.5 py-2 align-top">
                   {editable ? (
                     <input
                       value={line.account}
                       onChange={(event) =>
                         onLineChange?.(index, { account: event.target.value })
                       }
-                      className="w-full rounded border border-border bg-background px-2 py-1 text-sm"
+                      className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
                     />
                   ) : (
                     <div>
-                      <p className="text-foreground">{line.account}</p>
+                      <p className="text-sm font-normal text-foreground">{line.account}</p>
                       {line.description ? (
                         <p className="text-xs text-muted-foreground">{line.description}</p>
                       ) : null}
                     </div>
                   )}
                 </td>
-                <td className="px-2 py-2 text-right tabular-nums">
+                <td className="px-2.5 py-2 text-right font-mono text-sm tabular-nums text-foreground">
                   {editable ? (
                     <input
                       type="number"
@@ -67,7 +67,7 @@ export function JournalEntryCardBody({
                           debit: event.target.value ? Number(event.target.value) : undefined,
                         })
                       }
-                      className="w-28 rounded border border-border bg-background px-2 py-1 text-right text-sm"
+                      className="w-24 rounded-md border border-border bg-background px-2 py-1 text-right font-mono text-sm"
                     />
                   ) : line.debit !== undefined ? (
                     formatCurrency(line.debit)
@@ -75,7 +75,7 @@ export function JournalEntryCardBody({
                     "—"
                   )}
                 </td>
-                <td className="px-2 py-2 text-right tabular-nums">
+                <td className="px-2.5 py-2 text-right font-mono text-sm tabular-nums text-foreground">
                   {editable ? (
                     <input
                       type="number"
@@ -85,7 +85,7 @@ export function JournalEntryCardBody({
                           credit: event.target.value ? Number(event.target.value) : undefined,
                         })
                       }
-                      className="w-28 rounded border border-border bg-background px-2 py-1 text-right text-sm"
+                      className="w-24 rounded-md border border-border bg-background px-2 py-1 text-right font-mono text-sm"
                     />
                   ) : line.credit !== undefined ? (
                     formatCurrency(line.credit)
@@ -99,13 +99,13 @@ export function JournalEntryCardBody({
         </table>
       </div>
 
-      <div className="mt-3 border-t border-border/60 pt-3 text-sm">
-        <p className={cn("font-medium", balanced ? "text-emerald-700" : "text-red-700")}>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5 text-xs">
+        <p className={cn("font-medium", balanced ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>
           {balanced
-            ? `Balanced ✓   Total: ${formatCurrency(totalDebit)}`
+            ? `Balanced ✓ Total: ${formatCurrency(totalDebit)}`
             : `⚠ Out of balance by ${formatCurrency(Math.abs(totalDebit - totalCredit))}`}
         </p>
-        {data.memo ? <p className="mt-1 text-muted-foreground">Memo: {data.memo}</p> : null}
+        {data.memo ? <p className="text-muted-foreground">Memo: {data.memo}</p> : null}
       </div>
     </>
   )
