@@ -48,14 +48,12 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "flex shrink-0 items-center justify-between gap-4 border-b border-dashed border-border/60 bg-background px-5 py-4",
+        "flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-6",
         className,
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-inset ring-border/50">
-          <Icon className="size-4 text-muted-foreground" />
-        </div>
+        <Icon className="size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex flex-col gap-0.5">
           {hasBreadcrumbs ? (
             <nav

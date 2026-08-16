@@ -28,7 +28,7 @@ export function HomeAttentionList() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center rounded-lg border border-dashed border-border/70 px-4 py-8">
+      <div className="flex items-center justify-center rounded-lg border border-dashed border-border px-4 py-8">
         <Spinner className="size-4 text-muted-foreground" />
       </div>
     )
@@ -36,7 +36,7 @@ export function HomeAttentionList() {
 
   if (visibleItems.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
+      <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
         Nothing needs your attention right now.
       </p>
     )
@@ -103,7 +103,7 @@ function HomeAttentionExpandableCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border/70 bg-background shadow-xs">
+    <article className="overflow-hidden rounded-xl border border-border bg-background">
       <div className="flex items-start justify-between gap-3 px-4 py-3">
         <button
           type="button"
@@ -112,7 +112,7 @@ function HomeAttentionExpandableCard({
           aria-expanded={expanded}
         >
           <div className="min-w-0 space-y-1">
-            <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
+            <h3 className="text-sm font-normal text-foreground">{item.title}</h3>
             <p className="text-xs text-muted-foreground">{item.activityTitle}</p>
           </div>
 
@@ -127,7 +127,7 @@ function HomeAttentionExpandableCard({
         <Button
           type="button"
           size="sm"
-          className="hidden h-8 shrink-0 bg-emerald-700 px-3 text-xs hover:bg-emerald-800 sm:inline-flex"
+          className="hidden h-8 shrink-0 px-3 text-xs sm:inline-flex"
           disabled={submitting}
           onClick={handleApprove}
         >
@@ -136,7 +136,7 @@ function HomeAttentionExpandableCard({
       </div>
 
       {expanded ? (
-        <div className="border-t border-border/70">
+        <div className="border-t border-border">
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <Link
@@ -158,7 +158,7 @@ function HomeAttentionExpandableCard({
             <Button
               type="button"
               size="sm"
-              className="h-8 bg-emerald-700 px-3 text-xs hover:bg-emerald-800 sm:hidden"
+              className="h-8 px-3 text-xs sm:hidden"
               disabled={submitting}
               onClick={handleApprove}
             >
@@ -189,7 +189,7 @@ function HomeAttentionExpandableCard({
                 ]
 
                 return (
-                  <div key={idx} className="rounded-lg border border-border/60 p-3 bg-muted/20">
+                  <div key={idx} className="rounded-lg border border-border bg-muted p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
                       <div className="flex items-center gap-2">
                         <span className="text-foreground">{entry.memo ?? entry.title ?? `Journal Entry #${idx + 1}`}</span>
@@ -198,11 +198,11 @@ function HomeAttentionExpandableCard({
                         ) : null}
                       </div>
                       {entry.reversing ? (
-                        <span className="rounded bg-amber-500/10 px-2 py-0.5 text-xs text-amber-600 font-normal">
+                        <span className="rounded border border-border-strong px-2 py-0.5 text-xs font-normal text-foreground">
                           Auto-Reverses on {entry.reversalDate ?? "next period"}
                         </span>
                       ) : (
-                        <span className="rounded bg-slate-500/10 px-2 py-0.5 text-xs text-muted-foreground font-normal">
+                        <span className="rounded border border-border px-2 py-0.5 text-xs font-normal text-muted-foreground">
                           Non-Reversing
                         </span>
                       )}

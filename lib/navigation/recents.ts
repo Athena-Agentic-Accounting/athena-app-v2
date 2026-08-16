@@ -80,8 +80,8 @@ export function formatRelativeTime(timestamp: number): string {
   return `${Math.floor(days / 7)}w`
 }
 
-export const RECENT_DOT_COLORS: Record<RecentItemKind, string> = {
-  activity: "bg-violet-500",
-  client: "bg-blue-500",
-  skill: "bg-emerald-500",
+export const RECENT_KIND_LABELS: Record<RecentItemKind, string> = {
+  activity: "Activity",
+  client: "Client",
+  skill: "Skill",
 }

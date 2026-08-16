@@ -56,7 +56,7 @@ export function ChatPromptBar({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border/80 bg-background p-3 shadow-xs ring-1 ring-primary/10",
+        "rounded-xl border border-border bg-background p-3",
         className,
       )}
     >

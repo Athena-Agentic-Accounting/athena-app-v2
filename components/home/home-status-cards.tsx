@@ -3,61 +3,39 @@
 import Link from "next/link"
 
 import { CHECKLIST_COLUMNS, type TaskStatus } from "@/lib/checklist/mock-tasks"
-import { cn } from "@/lib/utils"
+import { StatusIcon } from "@/lib/checklist/status-icons"
 
 type HomeStatusCardsProps = {
   counts: Record<TaskStatus, number>
   isLoading?: boolean
 }
 
-const STATUS_STYLES: Record<
-  TaskStatus,
-  { accent: string; ring: string }
-> = {
-  "needs-action": {
-    accent: "text-amber-700",
-    ring: "ring-amber-200/80",
-  },
-  "to-do": {
-    accent: "text-foreground",
-    ring: "ring-border/70",
-  },
-  "in-review": {
-    accent: "text-blue-700",
-    ring: "ring-blue-200/80",
-  },
-  complete: {
-    accent: "text-emerald-700",
-    ring: "ring-emerald-200/80",
-  },
-}
-
+/**
+ * A single inline row of counts rather than four hero stat cards. The numbers
+ * are reference information, not the point of the page — the composer is.
+ */
 export function HomeStatusCards({ counts, isLoading }: HomeStatusCardsProps) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {CHECKLIST_COLUMNS.map((column) => {
-        const count = counts[column.id]
-        const styles = STATUS_STYLES[column.id]
-
-        return (
+    <div className="flex flex-wrap items-center gap-x-1 gap-y-2">
+      {CHECKLIST_COLUMNS.map((column, index) => (
+        <div key={column.id} className="flex items-center">
+          {index > 0 ? (
+            <span aria-hidden className="px-2 text-border-strong">
+              ·
+            </span>
+          ) : null}
           <Link
-            key={column.id}
             href={`/board?status=${column.id}`}
-            className={cn(
-              "rounded-xl border border-border/70 bg-background p-4 shadow-xs ring-1 transition-colors hover:bg-muted/20",
-              styles.ring,
-            )}
+            className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            <p className="text-xs font-medium text-muted-foreground">{column.label}</p>
-            <p className={cn("mt-2 text-3xl font-semibold tabular-nums tracking-tight", styles.accent)}>
-              {isLoading ? "—" : count}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {count === 1 ? "activity" : "activities"}
-            </p>
+            <StatusIcon status={column.id} className="size-3.5 shrink-0" />
+            <span className="tabular-nums text-foreground">
+              {isLoading ? "—" : counts[column.id]}
+            </span>
+            <span>{column.label}</span>
           </Link>
-        )
-      })}
+        </div>
+      ))}
     </div>
   )
 }

@@ -41,11 +41,10 @@ import {
 import { useTenantConfig } from "@/hooks/use-tenant-config"
 import {
   formatRelativeTime,
-  RECENT_DOT_COLORS,
+  RECENT_KIND_LABELS,
   useRecentItems,
 } from "@/lib/navigation/recents"
 import { getVisibleNavItems, isNavItemActive } from "@/lib/navigation/sidebar-nav"
-import { cn } from "@/lib/utils"
 
 function AthenaLogo() {
   return (
@@ -176,13 +175,7 @@ export function AppSidebar() {
                   {recentItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton asChild className="h-auto py-1.5">
-                        <Link href={item.href}>
-                          <span
-                            className={cn(
-                              "size-1.5 shrink-0 rounded-full",
-                              RECENT_DOT_COLORS[item.kind] ?? "bg-muted-foreground",
-                            )}
-                          />
+                        <Link href={item.href} title={`${RECENT_KIND_LABELS[item.kind]} · ${item.label}`}>
                           <span className="flex-1 truncate text-xs">{item.label}</span>
                           <span className="text-[11px] text-muted-foreground">
                             {formatRelativeTime(item.visitedAt)}

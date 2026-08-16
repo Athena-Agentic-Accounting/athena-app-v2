@@ -15,10 +15,13 @@ export type StatusIconConfig = {
   iconClassName: string
 }
 
+// Status is carried by icon shape, not hue. Only needs-action steps up to
+// full-strength foreground; everything else stays muted so no single column
+// shouts louder than the task titles inside it.
 export const STATUS_ICON_CONFIG: Record<TaskStatus, StatusIconConfig> = {
   "needs-action": {
     icon: AlertCircleIcon,
-    iconClassName: "text-amber-500",
+    iconClassName: "text-foreground",
   },
   "to-do": {
     icon: CircleIcon,
@@ -26,11 +29,11 @@ export const STATUS_ICON_CONFIG: Record<TaskStatus, StatusIconConfig> = {
   },
   "in-review": {
     icon: EyeIcon,
-    iconClassName: "text-blue-500",
+    iconClassName: "text-muted-foreground",
   },
   complete: {
     icon: CheckCircle2Icon,
-    iconClassName: "text-emerald-500",
+    iconClassName: "text-muted-foreground",
   },
 }
 
