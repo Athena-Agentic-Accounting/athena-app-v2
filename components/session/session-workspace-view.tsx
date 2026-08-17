@@ -20,6 +20,8 @@ type SessionWorkspaceViewProps = {
   artifact?: SessionArtifact
   showPlanAction?: boolean
   streamStatus?: UseActivitySessionReturn["streamStatus"]
+  sessionError?: UseActivitySessionReturn["sessionError"]
+  onRetrySession?: UseActivitySessionReturn["retrySession"]
   isSending?: boolean
   isAwaitingResponse?: boolean
   onSendMessage?: (content: string) => Promise<void>
@@ -43,6 +45,8 @@ export function SessionWorkspaceView({
   artifact,
   showPlanAction = false,
   streamStatus,
+  sessionError,
+  onRetrySession,
   isSending,
   isAwaitingResponse,
   onSendMessage,
@@ -69,6 +73,7 @@ export function SessionWorkspaceView({
         <ArtifactPanel
           artifact={artifact}
           activeTabId={activeTabId}
+          activityStatus={activityStatus}
           onActiveTabChange={setActiveTabId}
           onPlanDecision={onPlanDecision}
         />
@@ -83,9 +88,12 @@ export function SessionWorkspaceView({
         chatMessages={chatMessages}
         showPlanAction={showPlanAction}
         streamStatus={streamStatus}
+        sessionError={sessionError}
+        onRetrySession={onRetrySession}
         isSending={isSending}
         isAwaitingResponse={isAwaitingResponse}
         onSendMessage={onSendMessage}
+        onPlanDecision={onPlanDecision}
         onApprovalDecision={onApprovalDecision}
         onEditActivity={onEditActivity}
         activityLocked={activityLocked}

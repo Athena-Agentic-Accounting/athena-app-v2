@@ -184,3 +184,37 @@
     border-right: none;
   }
 }
+/* Thinking / "Thoughts" shimmer — a slow sweep of light across the label
+   while the agent is still reasoning. Replaces the bouncing-dots indicator. */
+@keyframes athena-thought-shimmer {
+  0% {
+    background-position: 150% center;
+  }
+  100% {
+    background-position: -50% center;
+  }
+}
+
+.athena-thought-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-muted-foreground) 0%,
+    var(--color-muted-foreground) 35%,
+    var(--color-foreground) 50%,
+    var(--color-muted-foreground) 65%,
+    var(--color-muted-foreground) 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: athena-thought-shimmer 2.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .athena-thought-shimmer {
+    animation: none;
+    color: var(--color-muted-foreground);
+    background-image: none;
+  }
+}

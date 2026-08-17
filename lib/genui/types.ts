@@ -138,6 +138,8 @@ export type CardRendererOptions = {
   isLive?: boolean
   canDecide?: boolean
   decision?: ApprovalDecisionRecord
+  isPlanConfirmed?: boolean
+  onPlanDecision?: (decision: PlanReviewDecision) => void | Promise<void>
   onDecision?: (
     gateId: string,
     payload: {

@@ -5,6 +5,7 @@ export type Client = {
 }
 
 export const MOCK_CLIENTS: Client[] = [
+  { id: "accra-biz-001", name: "Forge Studios Inc.", initials: "FS" },
   { id: "jordans-lawn-care", name: "Jordan's Lawn Care", initials: "JL" },
   { id: "acme-corp", name: "Acme Corporation", initials: "AC" },
   { id: "northstar-llc", name: "Northstar LLC", initials: "NL" },

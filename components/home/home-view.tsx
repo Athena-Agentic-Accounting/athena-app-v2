@@ -64,64 +64,37 @@ export function HomeView() {
   )
 
   async function handlePromptSubmit(message: string, mode: PromptMode) {
-    if (clientSource !== "api") {
-      toast.error("Clients are still loading", {
-        description: "Give it a moment and try again.",
-      })
-      return
-    }
+    const clientId = resolvePromptClientId(selectedClientId, clients) || clients[0]?.id || "client-1"
 
-    const clientId = resolvePromptClientId(selectedClientId, clients)
-    if (!clientId) {
-      toast.error("Select a client first", {
-        description: "Choose a client in the sidebar before starting work.",
-      })
-      return
-    }
-
-    // Show the question in the thread immediately.
-    setMessages((prev) => [
-      ...prev,
-      { id: `user-${Date.now()}`, role: "user", content: message },
-    ])
     setSubmittingPrompt(true)
-    let navigated = false
 
     try {
       const token = await getToken()
       const response = await submitActivityPrompt(token, { clientId, prompt: message, mode })
 
-      const activityId = response.activity?.id
-      if (activityId && (response.kind === "activity_proposed" || response.kind === "activity_created")) {
-        navigated = true
-        router.push(`/activities/${activityId}?prompt=${encodeURIComponent(message)}`)
-        return
-      }
-
-      if (activityId) {
-        navigated = true
-        router.push(`/activities/${activityId}`)
-        return
-      }
-
-      const inlineAnswer =
-        response.answer ?? response.message ?? response.content ?? null
-
-      if (inlineAnswer) {
+      if (response.kind === "answer") {
+        const text = response.answer || response.content || response.message || ""
         setMessages((prev) => [
           ...prev,
-          { id: `assistant-${Date.now()}`, role: "assistant", content: inlineAnswer },
+          { id: `user-${Date.now()}`, role: "user", content: message },
+          { id: `assistant-${Date.now()}`, role: "assistant", content: text },
         ])
+        setSubmittingPrompt(false)
         return
       }
 
-      toast.success("Prompt sent")
+      if (response.activity?.id) {
+        router.push(`/activities/${response.activity.id}?prompt=${encodeURIComponent(message)}`)
+      } else {
+        throw new Error("No activity returned from server")
+      }
     } catch (err) {
-      toast.error("Could not send prompt", {
-        description: err instanceof Error ? err.message : "Something went wrong.",
+      console.error("Failed to start task:", err)
+      const errorMsg = err instanceof Error ? err.message : "Failed to start task. Please try again."
+      toast.error("Could not start task", {
+        description: errorMsg,
       })
-    } finally {
-      if (!navigated) setSubmittingPrompt(false)
+      setSubmittingPrompt(false)
     }
   }
 

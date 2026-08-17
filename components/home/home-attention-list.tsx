@@ -218,8 +218,8 @@ function HomeAttentionExpandableCard({
                     <GenUITable
                       columns={[
                         { key: "account", label: "Account", format: "text" },
-                        { key: "debit", label: "Debit", align: "left", format: "currency" },
-                        { key: "credit", label: "Credit", align: "left", format: "currency" },
+                        { key: "debit", label: "Debit", align: "right", format: "currency" },
+                        { key: "credit", label: "Credit", align: "right", format: "currency" },
                         { key: "description", label: "Description", format: "text" },
                       ]}
                       rows={rows}

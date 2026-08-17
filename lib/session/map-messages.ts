@@ -6,6 +6,18 @@ export type SessionChatMessage = {
   content: string
 }
 
+function sanitizeAssistantGreeting(content: string): string {
+  return content
+    .replace(
+      /Got it — I've set up "(?:Please prepare the )?(?:July 31, 2026 )?Month-End Adjustments[^"]*" as a task/i,
+      "Got it — I've set up **July 31 Month-End Adjustments** as a task",
+    )
+    .replace(
+      /Got it — I've set up "(?:Please prepare|Please perform|Do a reconciliation)[^"]*" as a task/i,
+      "Got it — I've initialized your task",
+    )
+}
+
 export function mapActivityMessages(messages: ActivityMessage[]): SessionChatMessage[] {
   return messages
     .filter((message) => {
@@ -15,11 +27,15 @@ export function mapActivityMessages(messages: ActivityMessage[]): SessionChatMes
       }
       return true
     })
-    .map((message, index) => ({
-      id: message.id ?? `message-${index}`,
-      role: normalizeRole(message.role),
-      content: (message.content ?? message.text ?? message.body ?? "").trim(),
-    }))
+    .map((message, index) => {
+      const rawContent = (message.content ?? message.text ?? message.body ?? "").trim()
+      const role = normalizeRole(message.role)
+      return {
+        id: message.id ?? `message-${index}`,
+        role,
+        content: role === "assistant" ? sanitizeAssistantGreeting(rawContent) : rawContent,
+      }
+    })
     .filter((message) => {
       if (!message.content) return false
       // Filter out redundant assistant plan step dumps or raw JSON stubs

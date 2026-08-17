@@ -57,6 +57,8 @@ export function ActivitySessionView({
         chatMessages={session.messages}
         showPlanAction={Boolean(session.artifact)}
         streamStatus={session.streamStatus}
+        sessionError={session.sessionError}
+        onRetrySession={session.retrySession}
         isSending={session.isSending}
         isAwaitingResponse={session.isAwaitingResponse}
         onSendMessage={session.sendMessage}

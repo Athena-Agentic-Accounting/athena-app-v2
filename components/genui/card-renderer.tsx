@@ -30,7 +30,13 @@ export function CardRenderer({ event, options = {} }: CardRendererProps) {
     case "journal_entry_review":
       return <JournalEntryCard data={event.event.data} />
     case "checklist":
-      return <ChecklistCard data={event.event.data} />
+      return (
+        <ChecklistCard
+          data={event.event.data}
+          isConfirmed={options.isPlanConfirmed}
+          onPlanDecision={options.onPlanDecision}
+        />
+      )
     case "chart":
       return <ChartCard data={event.event.data} />
     case "file_created":
