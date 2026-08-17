@@ -4,6 +4,7 @@ import { RiCheckLine, RiListCheck2 } from "@remixicon/react"
 
 import { GenUITable } from "@/components/genui/genui-table"
 import { MarkdownContent } from "@/components/session/markdown-content"
+import { WorkpaperSpreadsheet } from "@/components/session/workpaper-spreadsheet"
 import type { TableCardData } from "@/lib/genui/types"
 
 type PlanReviewContentProps = {
@@ -42,6 +43,7 @@ export function PlanReviewContent({ markdown, table }: PlanReviewContentProps) {
 
   return (
     <div className="space-y-6">
+      {/* 1. Proposed Plan Stepper Card */}
       {planData ? (
         <section className="rounded-xl border border-border bg-card p-5">
           <header className="mb-4 flex items-center gap-2">
@@ -68,21 +70,8 @@ export function PlanReviewContent({ markdown, table }: PlanReviewContentProps) {
         <MarkdownContent markdown={beforeTable} />
       ) : null}
 
-      {hasTable && table ? (
-        <section className="rounded-xl border border-border bg-card p-5">
-          <header className="mb-4">
-            <h3 className="text-sm font-medium text-foreground">
-              Schedule & Workpaper Preview
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Prepaid amortizations calculated across active contracts
-            </p>
-          </header>
-          <div className="w-full min-w-0 overflow-x-auto rounded-lg border border-border/60 p-2">
-            <GenUITable columns={table.columns} rows={table.rows} />
-          </div>
-        </section>
-      ) : null}
+      {/* 2. Interactive Spreadsheet Workpaper (Multi-tab Excel Interface) */}
+      <WorkpaperSpreadsheet />
 
       {afterTable ? <MarkdownContent markdown={afterTable} /> : null}
     </div>
