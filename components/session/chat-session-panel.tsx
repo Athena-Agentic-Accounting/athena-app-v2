@@ -242,7 +242,7 @@ export function ChatSessionPanel({
       </header>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 sm:px-6 py-6">
           {userMessage ? <LegacyUserMessageBubble message={userMessage} /> : null}
 
           {chatMessages.map((message) => (

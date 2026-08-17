@@ -46,7 +46,7 @@ export function CardShell({ type, title, isLive = false, children, className }: 
   return (
     <article
       className={cn(
-        "overflow-hidden rounded-xl border bg-card p-4 transition-colors",
+        "overflow-hidden rounded-xl border bg-card p-4 transition-colors mx-1 sm:mx-2",
         variant === "neutral" && "border-border",
         variant === "attention" && "border-border-strong bg-muted/20",
         variant === "approval" && "border-border-strong shadow-xs",

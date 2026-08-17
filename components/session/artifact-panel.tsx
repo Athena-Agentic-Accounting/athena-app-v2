@@ -99,8 +99,8 @@ export function ArtifactPanel({
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="mx-auto w-full max-w-5xl px-6 py-6 pb-24">
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="mx-auto w-full max-w-4xl px-8 py-6 pb-24">
           {activeTab.kind === "document" ? (
             <>
               {activeTab.description ? (
@@ -122,7 +122,7 @@ export function ArtifactPanel({
             />
           )}
         </div>
-      </div>
+      </ScrollArea>
 
       {activeTab.kind === "plan_review" ? (
         <PlanReviewActions

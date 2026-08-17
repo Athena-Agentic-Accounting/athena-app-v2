@@ -98,7 +98,7 @@ export function SessionWorkspaceView({
         onClose={onClose}
         className={
           showArtifact && artifact
-            ? "w-[min(100%,24rem)] shrink-0"
+            ? "w-[min(100%,26rem)] shrink-0 border-l border-border"
             : "border-l-0"
         }
       />
