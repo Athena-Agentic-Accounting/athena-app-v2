@@ -39,12 +39,17 @@ function mapBoardActivityToChecklistTask(
   }
 }
 
+const IGNORED_TITLES = new Set(["hey", "hii", "hello what can you do", "test", "testing"])
+
 export function mapBoardToChecklistTasks(board: ActivityBoardResponse): ChecklistTask[] {
   const columns = getBoardColumns(board)
   const tasks: ChecklistTask[] = []
 
   for (const [columnStatus, activities] of Object.entries(columns)) {
     for (const activity of activities ?? []) {
+      if (activity.name && IGNORED_TITLES.has(activity.name.trim().toLowerCase())) {
+        continue
+      }
       tasks.push(mapBoardActivityToChecklistTask(activity, columnStatus))
     }
   }

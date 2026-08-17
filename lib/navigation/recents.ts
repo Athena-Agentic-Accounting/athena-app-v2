@@ -16,6 +16,12 @@ export type RecentItem = {
   visitedAt: number
 }
 
+const IGNORED_TITLES = new Set(["hey", "hii", "hello what can you do", "test", "testing"])
+
+function isDummyTitle(label: string): boolean {
+  return IGNORED_TITLES.has(label.trim().toLowerCase())
+}
+
 function readRecents(): RecentItem[] {
   if (typeof window === "undefined") return []
   try {
@@ -29,6 +35,7 @@ function readRecents(): RecentItem[] {
         item !== null &&
         typeof (item as RecentItem).href === "string" &&
         typeof (item as RecentItem).label === "string" &&
+        !isDummyTitle((item as RecentItem).label) &&
         typeof (item as RecentItem).visitedAt === "number",
     )
   } catch {
@@ -38,6 +45,7 @@ function readRecents(): RecentItem[] {
 
 export function trackRecent(item: Omit<RecentItem, "visitedAt">): void {
   if (typeof window === "undefined") return
+  if (isDummyTitle(item.label)) return
   try {
     const next = [
       { ...item, visitedAt: Date.now() },
