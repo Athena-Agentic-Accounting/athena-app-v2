@@ -8,12 +8,27 @@ export type SessionChatMessage = {
 
 export function mapActivityMessages(messages: ActivityMessage[]): SessionChatMessage[] {
   return messages
+    .filter((message) => {
+      // If the message is already represented as a GenUI structured event, do not render as raw text bubble
+      if (message.structured || (message as any).structured_) {
+        return false
+      }
+      return true
+    })
     .map((message, index) => ({
       id: message.id ?? `message-${index}`,
       role: normalizeRole(message.role),
       content: (message.content ?? message.text ?? message.body ?? "").trim(),
     }))
-    .filter((message) => message.content.length > 0)
+    .filter((message) => {
+      if (!message.content) return false
+      // Filter out redundant assistant plan step dumps or raw JSON stubs
+      const lower = message.content.toLowerCase()
+      if (message.role === "assistant" && (lower.startsWith("proposed plan") || lower.startsWith("```json"))) {
+        return false
+      }
+      return message.content.length > 0
+    })
 }
 
 function normalizeRole(role?: string): SessionChatMessage["role"] {

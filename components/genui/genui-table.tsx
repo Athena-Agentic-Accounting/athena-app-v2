@@ -28,7 +28,7 @@ function formatCellValue(value: unknown, format: TableColumnDef["format"] = "tex
 export function GenUITable({ columns, rows, className }: GenUITableProps) {
   return (
     <div className={cn("w-full overflow-x-auto", className)}>
-      <table className="w-full min-w-[640px] text-left text-sm">
+      <table className="w-full min-w-[820px] text-left text-sm">
         <thead>
           <tr className="border-b border-border">
             {columns.map((column) => {
@@ -41,7 +41,7 @@ export function GenUITable({ columns, rows, className }: GenUITableProps) {
                 <th
                   key={column.key}
                   className={cn(
-                    "px-3 py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground",
+                    "px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground whitespace-nowrap",
                     isNumeric ? "text-right" : "text-left",
                   )}
                 >
@@ -73,7 +73,7 @@ export function GenUITable({ columns, rows, className }: GenUITableProps) {
                     <td
                       key={column.key}
                       className={cn(
-                        "px-3 py-2.5 text-sm text-foreground",
+                        "px-4 py-3.5 text-sm leading-relaxed text-foreground whitespace-nowrap",
                         isNumeric ? "text-right font-mono tabular-nums" : "text-left",
                         totalRow && "font-medium text-foreground",
                       )}

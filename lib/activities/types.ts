@@ -96,6 +96,8 @@ export type ActivityMessage = {
   text?: string
   body?: string
   role?: string
+  structured?: any
+  structured_?: any
   createdAt?: string
   created_at?: string
 }
