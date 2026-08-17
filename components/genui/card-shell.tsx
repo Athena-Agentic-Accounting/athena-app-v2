@@ -71,7 +71,7 @@ export function CardShell({ type, title, isLive = false, children, className }: 
             variant === "neutral" && "text-muted-foreground",
           )}
         />
-        <span className="truncate">{title}</span>
+        <span className="min-w-0 flex-1 leading-snug break-words">{title}</span>
       </header>
       <div>{children}</div>
     </article>
