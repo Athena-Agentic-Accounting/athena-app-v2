@@ -26,6 +26,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -37,8 +42,10 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { useTenantConfig } from "@/hooks/use-tenant-config"
 import {
@@ -69,16 +76,27 @@ function UserMenu() {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="size-7 shrink-0 text-muted-foreground"
-            aria-label="Account"
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-7 shrink-0 text-muted-foreground group-data-[collapsible=icon]:size-8"
+                aria-label="Account"
+              >
+                <RiUserLine className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent
+            side="right"
+            align="center"
+            className="hidden group-data-[collapsible=icon]:block"
           >
-            <RiUserLine className="size-3.5" />
-          </Button>
-        </DropdownMenuTrigger>
+            Account
+          </TooltipContent>
+        </Tooltip>
         <DropdownMenuContent side="top" align="start" className="w-56">
           {email ? (
             <>
@@ -113,8 +131,27 @@ function UserMenu() {
   )
 }
 
+function formatRecentLabel(label: string): string {
+  const trimmed = label.trim()
+  if (/prepaid.*amortization/i.test(trimmed) || /july 31.*month-end/i.test(trimmed)) {
+    return "July 31 Month-End Adjustments"
+  }
+  if (/reconciliation/i.test(trimmed)) {
+    return "Bank Reconciliation"
+  }
+  if (/payroll/i.test(trimmed)) {
+    return "Payroll Clearance & Taxes"
+  }
+  if (trimmed.length > 34) {
+    return trimmed.slice(0, 34).trim() + "…"
+  }
+  return trimmed
+}
+
 export function AppSidebar() {
   const pathname = usePathname()
+  const { toggleSidebar, state } = useSidebar()
+  const isCollapsed = state === "collapsed"
   const { allCount } = useActivityBoard()
   const { isInHouse } = useTenantConfig()
   const navItems = getVisibleNavItems({ isInHouse })
@@ -126,10 +163,47 @@ export function AppSidebar() {
       collapsible="icon"
       className="!border-r-0 text-xs [&_[data-slot=sidebar-group-label]]:text-[11px] [&_[data-slot=sidebar-menu-badge]]:text-[10px] [&_[data-slot=sidebar-menu-button]]:text-xs [&_[data-slot=sidebar-menu-button]_svg]:size-3.5"
     >
-      <SidebarHeader className="gap-2.5 p-2.5">
-        <div className="flex items-center justify-between px-1 group-data-[collapsible=icon]:justify-center">
-          <AthenaLogo />
-          <SidebarTrigger className="size-6 text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:hidden" />
+      <SidebarHeader className="gap-2.5 p-2.5 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-2 group-data-[collapsible=icon]:items-center">
+        <div className="flex items-center justify-between px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:w-full">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={isCollapsed ? toggleSidebar : undefined}
+                className={cn(
+                  "rounded-lg outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring/50",
+                  isCollapsed && "cursor-pointer hover:scale-105 active:scale-95",
+                )}
+                aria-label={isCollapsed ? "Toggle Sidebar (Ctrl+B)" : "Athena"}
+              >
+                <AthenaLogo />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="right"
+              align="center"
+              className="hidden items-center gap-2 px-2.5 py-1 text-xs group-data-[collapsible=icon]:flex"
+            >
+              <span>Toggle Sidebar</span>
+              <span className="text-[11px] text-background/60 font-mono">Ctrl+B</span>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SidebarTrigger
+                className="size-6 text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:hidden"
+                aria-label="Toggle Sidebar (Ctrl+B)"
+              />
+            </TooltipTrigger>
+            <TooltipContent
+              side="right"
+              align="center"
+              className="flex items-center gap-2 px-2.5 py-1 text-xs"
+            >
+              <span>Toggle Sidebar</span>
+              <span className="text-[11px] text-background/60 font-mono">Ctrl+B</span>
+            </TooltipContent>
+          </Tooltip>
         </div>
         <ClientSelector />
       </SidebarHeader>
@@ -200,8 +274,8 @@ export function AppSidebar() {
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton asChild className="h-auto py-1.5">
                           <Link href={item.href} title={`${RECENT_KIND_LABELS[item.kind]} · ${item.label}`}>
-                            <span className="flex-1 truncate text-xs">{item.label}</span>
-                            <span className="text-[11px] text-muted-foreground">
+                            <span className="flex-1 truncate text-xs">{formatRecentLabel(item.label)}</span>
+                            <span className="shrink-0 text-[11px] text-muted-foreground">
                               {formatRelativeTime(item.visitedAt)}
                             </span>
                           </Link>
@@ -216,17 +290,32 @@ export function AppSidebar() {
         ) : null}
       </SidebarContent>
 
-      <SidebarFooter className="p-2.5">
-        <div className="flex items-center gap-1.5 group-data-[collapsible=icon]:flex-col">
+      <SidebarFooter className="p-2.5 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:items-center">
+        <div className="flex items-center gap-1.5 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:items-center">
           <UserMenu />
-          <Button asChild className="h-8 flex-1 justify-center text-xs shadow-none">
-            <Link href="/home">
-              <RiSparklingLine className="size-3.5" data-icon="inline-start" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                asChild
+                className="h-8 flex-1 justify-center text-xs shadow-none group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:p-0"
+              >
+                <Link href="/home" aria-label="New chat">
+                  <RiSparklingLine className="size-3.5 group-data-[collapsible=icon]:size-4" data-icon="inline-start" />
+                  <span className="group-data-[collapsible=icon]:hidden">New chat</span>
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="right"
+              align="center"
+              className="hidden group-data-[collapsible=icon]:block"
+            >
               New chat
-            </Link>
-          </Button>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { decideAgentApproval } from "@/lib/api/activity-approvals";
 import { approveActivityPlanWithAgent } from "@/lib/api/activity-plan";
+import { getApprovalQueue } from "@/lib/api/approvals";
 import {
   confirmActivityPlan,
   getActivity,
@@ -32,9 +33,15 @@ import {
   mergeStreamEvents,
   parseStreamEvent,
 } from "@/lib/session/parse-stream-event";
-import { isPermanentStreamError } from "@/lib/api/sse";
+import { isPermanentStreamError, type StreamError } from "@/lib/api/sse";
 
-type StreamStatus = "idle" | "connecting" | "connected" | "error";
+export type StreamStatus = "idle" | "connecting" | "connected" | "syncing";
+
+export type SessionError =
+  | { kind: "auth"; message: string }
+  | { kind: "not_found"; message: string }
+  | { kind: "timeout"; message: string }
+  | { kind: "connection_lost"; message: string };
 
 function extractStreamEventsFromMessages(
   messages: any[],
@@ -61,6 +68,28 @@ function extractStreamEventsFromMessages(
   return events;
 }
 
+function synthesizeApprovalGateEvent(
+  gateRecord: any,
+  activityId: string,
+): ActivityStreamEvent {
+  return {
+    id: `queue-gate-${gateRecord.id}`,
+    activityId,
+    timestamp: gateRecord.createdAt ?? gateRecord.created_at ?? new Date().toISOString(),
+    event: {
+      type: "approval_gate",
+      data: {
+        gateId: gateRecord.id,
+        title: gateRecord.title,
+        gateType: gateRecord.gateType ?? gateRecord.gate_type,
+        pendingAction: gateRecord.pendingAction ?? gateRecord.pending_action,
+        payload: gateRecord.payload ?? {},
+        stepIndex: gateRecord.stepIndex ?? gateRecord.step_index ?? undefined,
+      },
+    },
+  };
+}
+
 export function useActivitySession(
   activityId: string,
   initialPrompt?: string | null,
@@ -70,6 +99,7 @@ export function useActivitySession(
   const [messages, setMessages] = useState<SessionChatMessage[]>([]);
   const [streamEvents, setStreamEvents] = useState<ActivityStreamEvent[]>([]);
   const [streamStatus, setStreamStatus] = useState<StreamStatus>("idle");
+  const [sessionError, setSessionError] = useState<SessionError | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false);
@@ -78,6 +108,8 @@ export function useActivitySession(
   const activityIdRef = useRef(activityId);
   const assistantCountRef = useRef(0);
   const isAwaitingResponseRef = useRef(isAwaitingResponse);
+  const pollFailuresRef = useRef(0);
+  const inactivityTimerRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     activityIdRef.current = activityId;
@@ -93,24 +125,136 @@ export function useActivitySession(
     ).length;
   }, [messages]);
 
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      window.clearTimeout(inactivityTimerRef.current);
+    }
+    if (!isAwaitingResponseRef.current) return;
+
+    inactivityTimerRef.current = window.setTimeout(() => {
+      if (isAwaitingResponseRef.current) {
+        setIsAwaitingResponse(false);
+        setStreamStatus("idle");
+        setSessionError({
+          kind: "timeout",
+          message:
+            "Athena is taking longer than expected. You can retry or check back shortly.",
+        });
+      }
+    }, 120000);
+  }, []);
+
+  const refreshDurableState = useCallback(async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const [rawMessages, pendingGates] = await Promise.all([
+        getActivityMessages(token, activityIdRef.current).catch(() => null),
+        getApprovalQueue(token, { activityId: activityIdRef.current }).catch(() => null),
+      ]);
+
+      if (rawMessages === null && pendingGates === null) {
+        throw new Error("Both message and approval polling failed");
+      }
+
+      pollFailuresRef.current = 0;
+      setSessionError((curr) => (curr?.kind === "connection_lost" ? null : curr));
+      resetInactivityTimer();
+
+      if (rawMessages !== null) {
+        const sorted = sortMessagesByCreatedAt(rawMessages);
+        const mapped = mapActivityMessages(sorted);
+        setMessages(mapped);
+
+        const messageEvents = extractStreamEventsFromMessages(sorted, activityIdRef.current);
+        setStreamEvents((current) => {
+          let updated = current;
+          for (const ev of messageEvents) {
+            updated = mergeStreamEvents(updated, ev);
+          }
+          return updated;
+        });
+
+        const assistantCount = mapped.filter(
+          (message) => message.role === "assistant",
+        ).length;
+        if (assistantCount > assistantCountRef.current) {
+          setIsAwaitingResponse(false);
+          setStreamStatus("idle");
+        }
+        assistantCountRef.current = assistantCount;
+      }
+
+      if (pendingGates !== null) {
+        const activityGates = (pendingGates || [])
+          .filter(
+            (g: any) =>
+              (g.activityId ?? g.activity_id) === activityIdRef.current,
+          )
+          .map((g: any) => synthesizeApprovalGateEvent(g, activityIdRef.current));
+
+        setStreamEvents((current) => {
+          let updated = current;
+          for (const ev of activityGates) {
+            updated = mergeStreamEvents(updated, ev);
+          }
+          return updated;
+        });
+      }
+    } catch {
+      pollFailuresRef.current += 1;
+      if (pollFailuresRef.current >= 8) {
+        setIsAwaitingResponse(false);
+        setStreamStatus("idle");
+        setSessionError({
+          kind: "connection_lost",
+          message:
+            "Unable to sync with Athena. Repeated connection attempts failed.",
+        });
+      }
+    }
+  }, [getToken, resetInactivityTimer]);
+
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setIsLoading(true);
       try {
-        const token = await getToken();
+        let token = await getToken();
+        let waits = 0;
+        while (!token && waits < 10 && !cancelled) {
+          await new Promise((r) => setTimeout(r, 300));
+          token = await getToken();
+          waits++;
+        }
         if (cancelled) return;
 
-        const [record, rawMessages] = await Promise.all([
+        const [record, rawMessages, pendingGates] = await Promise.all([
           getActivity(token, activityIdRef.current),
-          getActivityMessages(token, activityIdRef.current),
+          getActivityMessages(token, activityIdRef.current).catch(() => []),
+          getApprovalQueue(token, { activityId: activityIdRef.current }).catch(() => []),
         ]);
         if (cancelled) return;
 
         setActivity(record);
-        setMessages(mapActivityMessages(sortMessagesByCreatedAt(rawMessages)));
-        setStreamEvents(extractStreamEventsFromMessages(rawMessages, activityIdRef.current));
+        const sorted = sortMessagesByCreatedAt(rawMessages);
+        setMessages(mapActivityMessages(sorted));
+
+        const messageEvents = extractStreamEventsFromMessages(sorted, activityIdRef.current);
+        const activityGates = (pendingGates || [])
+          .filter(
+            (g: any) =>
+              (g.activityId ?? g.activity_id) === activityIdRef.current,
+          )
+          .map((g: any) => synthesizeApprovalGateEvent(g, activityIdRef.current));
+
+        let mergedEvents = messageEvents;
+        for (const gate of activityGates) {
+          mergedEvents = mergeStreamEvents(mergedEvents, gate);
+        }
+        setStreamEvents(mergedEvents);
       } catch (err) {
         if (!cancelled) {
           toast.error("Could not load activity session", {
@@ -129,52 +273,18 @@ export function useActivitySession(
     };
   }, [activityId, getToken]);
 
-  const refreshMessages = useCallback(async () => {
-    const token = await getToken();
-    const items = sortMessagesByCreatedAt(
-      await getActivityMessages(token, activityIdRef.current),
-    );
-    const mapped = mapActivityMessages(items);
-    setMessages(mapped);
-
-    const initialEvents = extractStreamEventsFromMessages(items, activityIdRef.current);
-    setStreamEvents((current) => {
-      const updated = [...current];
-      for (const incoming of initialEvents) {
-        const index = updated.findIndex((event) => event.id === incoming.id);
-        if (index === -1) {
-          updated.push(incoming);
-        } else {
-          updated[index] = incoming;
-        }
-      }
-      return updated;
-    });
-
-    const assistantCount = mapped.filter(
-      (message) => message.role === "assistant",
-    ).length;
-    if (assistantCount > assistantCountRef.current) {
-      setIsAwaitingResponse(false);
-    }
-    assistantCountRef.current = assistantCount;
-  }, [getToken]);
-
   useEffect(() => {
     if (!initialPrompt || initialPromptSent || isLoading) return;
 
     const prompt = initialPrompt.trim();
     if (!prompt) return;
 
-    // The engine seeds the request as the first user message when it proposes an
-    // activity, so don't post a duplicate — but still open the stream so the
-    // first planning run streams in. Only post here if nothing seeded it.
     const alreadySeeded = messages.some((message) => message.role === "user");
-
     let cancelled = false;
 
     async function bootstrapFirstRun() {
       setIsAwaitingResponse(true);
+      setSessionError(null);
       try {
         const token = await getToken();
         if (cancelled) return;
@@ -185,7 +295,7 @@ export function useActivitySession(
         }
 
         setInitialPromptSent(true);
-        await refreshMessages();
+        await refreshDurableState();
       } catch {
         if (!cancelled) {
           setIsAwaitingResponse(false);
@@ -205,12 +315,14 @@ export function useActivitySession(
     initialPromptSent,
     isLoading,
     messages,
-    refreshMessages,
+    refreshDurableState,
   ]);
 
   useEffect(() => {
     if (!isAwaitingResponse) {
-      setStreamStatus("idle");
+      if (!sessionError) {
+        setStreamStatus("idle");
+      }
       return;
     }
 
@@ -218,26 +330,51 @@ export function useActivitySession(
     let cancelled = false;
     let retryTimer: number | undefined;
     let retryCount = 0;
+    let authRetryCount = 0;
+    let tokenWaits = 0;
 
-    async function connect() {
+    async function connect(forceRefresh = false) {
       setStreamStatus("connecting");
-      const token = await getToken();
+      let token: string | null = null;
+      try {
+        token = forceRefresh
+          ? await (getToken as any)({ skipCache: true }).catch(() => getToken())
+          : await getToken();
+      } catch {
+        token = await getToken().catch(() => null);
+      }
+
       if (cancelled) return;
+
+      if (!token) {
+        tokenWaits += 1;
+        if (tokenWaits > 10) {
+          setStreamStatus("idle");
+          setIsAwaitingResponse(false);
+          setSessionError({
+            kind: "auth",
+            message: "Not signed in. Please reload the page to authenticate.",
+          });
+          return;
+        }
+        retryTimer = window.setTimeout(() => {
+          if (!cancelled) void connect(true);
+        }, 500);
+        return;
+      }
 
       unsubscribe?.();
       unsubscribe = subscribeActivityStream(token, activityIdRef.current, {
         onOpen: () => {
           if (cancelled) return;
           setStreamStatus("connected");
-            retryCount = 0;
-          // Backfill from the engine's durable history on every (re)connect —
-          // the agent's SSE broker is fire-and-forget, so anything emitted
-          // while we were disconnected only exists in the persisted messages.
-          // Idempotent: refreshMessages merges by event id.
-          void refreshMessages().catch(() => {});
+          retryCount = 0;
+          authRetryCount = 0;
+          void refreshDurableState().catch(() => {});
         },
         onEvent: (raw) => {
           if (cancelled) return;
+          resetInactivityTimer();
 
           const record = raw && typeof raw === "object" ? (raw as Record<string, any>) : null;
           const eventType = record?.event?.type ?? record?.type;
@@ -267,7 +404,6 @@ export function useActivitySession(
           const parsed = parseStreamEvent(raw, activityIdRef.current);
           if (!parsed) return;
 
-          // If the event is a gate or question, the agent has paused to wait for human input.
           if (
             parsed.event.type === "approval_gate" ||
             parsed.event.type === "attention_required" ||
@@ -280,34 +416,60 @@ export function useActivitySession(
         },
         onDone: () => {
           if (cancelled) return;
-          setIsAwaitingResponse(false);
-          void refreshMessages();
-          if (isAwaitingResponseRef.current) {
+          const wasAwaiting = isAwaitingResponseRef.current;
+          void refreshDurableState();
+          if (wasAwaiting) {
             retryTimer = window.setTimeout(() => {
               if (!cancelled) void connect();
             }, 1500);
           } else {
+            setIsAwaitingResponse(false);
             setStreamStatus("idle");
           }
         },
         onError: (error) => {
           if (cancelled) return;
 
-          if (isPermanentStreamError(error)) {
+          const status = (error as StreamError).status || 0;
+
+          if (status === 404) {
             setStreamStatus("idle");
+            setIsAwaitingResponse(false);
+            setSessionError({
+              kind: "not_found",
+              message: "Activity not found or tenant mismatch.",
+            });
             return;
           }
 
+          if (status === 401 || status === 403) {
+            authRetryCount += 1;
+            if (authRetryCount <= 3) {
+              setStreamStatus("syncing");
+              retryTimer = window.setTimeout(() => {
+                if (!cancelled) void connect(true);
+              }, 1000);
+              return;
+            }
+
+            setStreamStatus("idle");
+            setIsAwaitingResponse(false);
+            setSessionError({
+              kind: "auth",
+              message: "Session authentication failed or expired.",
+            });
+            return;
+          }
+
+          // Tier 1: Transient error — auto-fallback to polling with Syncing badge
+          setStreamStatus("syncing");
           retryCount += 1;
-          if (retryCount > 5) {
-            setStreamStatus("idle");
-            return;
-          }
-
-          setStreamStatus("error");
-          retryTimer = window.setTimeout(() => {
-            if (!cancelled) void connect();
-          }, 4000 * retryCount);
+          retryTimer = window.setTimeout(
+            () => {
+              if (!cancelled) void connect();
+            },
+            Math.min(1000 * Math.pow(2, retryCount), 10000),
+          );
         },
       });
     }
@@ -319,28 +481,52 @@ export function useActivitySession(
       if (retryTimer) window.clearTimeout(retryTimer);
       unsubscribe?.();
     };
-  }, [activityId, getToken, isAwaitingResponse, refreshMessages]);
+  }, [activityId, getToken, isAwaitingResponse, refreshDurableState, resetInactivityTimer]);
 
   useEffect(() => {
     if (!isAwaitingResponse) return;
 
-    const pollTimer = window.setInterval(() => {
-      void refreshMessages();
-    }, 2500);
+    resetInactivityTimer();
 
-    const timeoutTimer = window.setTimeout(() => {
-      setIsAwaitingResponse(false);
-    }, 120000);
+    const pollTimer = window.setInterval(() => {
+      void refreshDurableState();
+    }, 2500);
 
     return () => {
       window.clearInterval(pollTimer);
-      window.clearTimeout(timeoutTimer);
+      if (inactivityTimerRef.current) {
+        window.clearTimeout(inactivityTimerRef.current);
+      }
     };
-  }, [isAwaitingResponse, refreshMessages]);
+  }, [isAwaitingResponse, refreshDurableState, resetInactivityTimer]);
+
+  const retrySession = useCallback(async () => {
+    setSessionError(null);
+    pollFailuresRef.current = 0;
+
+    const token = await getToken();
+    if (!token) {
+      setSessionError({
+        kind: "auth",
+        message: "Not signed in. Please reload the page to authenticate.",
+      });
+      return;
+    }
+
+    await refreshDurableState();
+    const assistantCount = messages.filter((m) => m.role === "assistant").length;
+    if (assistantCount === assistantCountRef.current) {
+      setIsAwaitingResponse(true);
+    }
+  }, [getToken, messages, refreshDurableState]);
 
   const artifact = useMemo(
-    () => buildArtifactFromStreamEvents(streamEvents),
-    [streamEvents],
+    () =>
+      buildArtifactFromStreamEvents(
+        streamEvents,
+        (activity?.plan as any[]) || undefined,
+      ),
+    [streamEvents, activity?.plan],
   );
 
   const thoughts = useMemo(
@@ -366,11 +552,12 @@ export function useActivitySession(
       ]);
       setIsSending(true);
       setIsAwaitingResponse(true);
+      setSessionError(null);
 
       try {
         const token = await getToken();
         await postActivityMessage(token, activityIdRef.current, trimmed);
-        await refreshMessages();
+        await refreshDurableState();
       } catch (err) {
         setIsAwaitingResponse(false);
         setMessages((current) =>
@@ -385,7 +572,7 @@ export function useActivitySession(
         setIsSending(false);
       }
     },
-    [getToken, refreshMessages],
+    [getToken, refreshDurableState],
   );
 
   const handlePlanDecision = useCallback(
@@ -394,6 +581,7 @@ export function useActivitySession(
 
       if (decision === "start_now") {
         setIsAwaitingResponse(true);
+        setSessionError(null);
         try {
           const result = await approveActivityPlanWithAgent(
             token,
@@ -428,6 +616,7 @@ export function useActivitySession(
 
         toast.success("Plan rejected — Athena will regenerate it");
         setIsAwaitingResponse(true);
+        setSessionError(null);
         return;
       }
 
@@ -449,6 +638,7 @@ export function useActivitySession(
     ) => {
       const token = await getToken();
       setIsAwaitingResponse(true);
+      setSessionError(null);
       try {
         await decideAgentApproval(token, gateId, payload);
       } catch (err) {
@@ -462,7 +652,7 @@ export function useActivitySession(
       setStreamEvents((current) =>
         current.filter((event) => {
           if (event.event.type !== "approval_gate") return true;
-          return event.event.data.gateId !== gateId;
+          return (event.event.data as any)?.gateId !== gateId;
         }),
       );
       toast.success("Decision recorded");
@@ -477,15 +667,18 @@ export function useActivitySession(
     messages,
     streamEvents,
     streamStatus,
+    sessionError,
     isLoading,
     isSending,
     isAwaitingResponse,
     sendMessage,
     handlePlanDecision,
     handleApprovalDecision,
-    refreshMessages,
+    refreshMessages: refreshDurableState,
     refreshActivity,
+    retrySession,
   };
 }
 
 export type UseActivitySessionReturn = ReturnType<typeof useActivitySession>;
+

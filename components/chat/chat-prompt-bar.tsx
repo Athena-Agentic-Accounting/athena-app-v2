@@ -39,11 +39,21 @@ export function ChatPromptBar({
   const [mode, setMode] = useState<PromptMode>("default")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  function adjustHeight() {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto"
+      textareaRef.current.style.height = `${Math.min(Math.max(textareaRef.current.scrollHeight, 56), 220)}px`
+    }
+  }
+
   function handleSubmit() {
     const trimmed = value.trim()
     if (!trimmed) return
     onSubmit?.(trimmed, mode)
     setValue("")
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "56px"
+    }
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -63,12 +73,15 @@ export function ChatPromptBar({
       <textarea
         ref={textareaRef}
         value={value}
-        onChange={(event) => setValue(event.target.value)}
+        onChange={(event) => {
+          setValue(event.target.value)
+          adjustHeight()
+        }}
         onKeyDown={handleKeyDown}
         rows={2}
         placeholder={placeholder}
         aria-label="Message Athena"
-        className="min-h-[56px] w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
+        className="min-h-[56px] w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground transition-[height] duration-75"
       />
 
       <div className="mt-2 flex items-center justify-between gap-3">

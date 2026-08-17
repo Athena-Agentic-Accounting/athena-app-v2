@@ -14,6 +14,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { Client } from "@/lib/clients/mock-clients"
 import { cn } from "@/lib/utils"
 
@@ -27,11 +32,11 @@ function ClientBuildingIcon({
   return (
     <div
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-inset ring-border/60",
+        "flex size-8 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-inset ring-border/60 group-data-[collapsible=icon]:size-7",
         className,
       )}
     >
-      <RiBuildingLine className={cn("size-4 text-muted-foreground", iconClassName)} />
+      <RiBuildingLine className={cn("size-3.5 text-muted-foreground", iconClassName)} />
     </div>
   )
 }
@@ -49,7 +54,7 @@ function ClientMenuItem({ client, selected, onSelect }: ClientMenuItemProps) {
       onClick={() => onSelect(client.id)}
     >
       <div className="flex w-full items-center gap-3">
-        <ClientBuildingIcon />
+        <ClientBuildingIcon className="size-8 group-data-[collapsible=icon]:size-8" />
         <div className="min-w-0 flex-1 flex flex-col gap-0.5">
           <span className="truncate text-xs text-foreground">{client.name}</span>
           <span className="text-[11px] text-muted-foreground">
@@ -79,32 +84,44 @@ export function ClientSelector() {
   }
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
+    <SidebarMenu className="group-data-[collapsible=icon]:items-center">
+      <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2.5 rounded-md p-2 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:bg-sidebar-accent"
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md p-1.5 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center"
+                  aria-label={`Select workspace or client: ${selectedClient.name}`}
+                >
+                  <ClientBuildingIcon />
+                  <div className="min-w-0 flex-1 flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
+                    <span className="truncate text-xs font-normal text-foreground">
+                      {selectedClient.name}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {selectedClientId === "all" ? "Workspace view" : "Client"}
+                    </span>
+                  </div>
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border/80 bg-background shadow-xs group-data-[collapsible=icon]:hidden">
+                    <RiExpandUpDownLine className="size-3.5 text-muted-foreground" />
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent
+              side="right"
+              align="center"
+              className="hidden group-data-[collapsible=icon]:block"
             >
-              <ClientBuildingIcon />
-              <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                <span className="truncate text-xs font-normal text-foreground">
-                  {selectedClient.name}
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  {selectedClientId === "all" ? "Workspace view" : "Client"}
-                </span>
-              </div>
-              <div className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border/80 bg-background shadow-xs">
-                <RiExpandUpDownLine className="size-3.5 text-muted-foreground" />
-              </div>
-            </button>
-          </DropdownMenuTrigger>
+              {selectedClient.name}
+            </TooltipContent>
+          </Tooltip>
           <DropdownMenuContent
             side="right"
             align="start"
-            sideOffset={20}
+            sideOffset={12}
             className="w-[280px] min-w-[280px] rounded-2xl border border-border/60 p-2 shadow-md"
           >
             {clients.map((client) => (

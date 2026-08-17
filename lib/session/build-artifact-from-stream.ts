@@ -3,6 +3,7 @@ import type { SessionArtifact } from "@/lib/session/types"
 
 export function buildArtifactFromStreamEvents(
   events: ActivityStreamEvent[],
+  activityPlan?: any[],
 ): SessionArtifact | undefined {
   // Plan checklist emitted by the AI server after plan submission
   const planChecklist = events.find(
@@ -24,7 +25,7 @@ export function buildArtifactFromStreamEvents(
         planNarrative !== undefined),
   )
 
-  if (!planChecklist && !planNarrative && !planTable) return undefined
+  if (!planChecklist && !planNarrative && !planTable && (!activityPlan || activityPlan.length === 0)) return undefined
 
   // Build markdown from checklist items if no narrative is present
   let markdown: string
@@ -35,6 +36,12 @@ export function buildArtifactFromStreamEvents(
     const title = planChecklist.event.data.title ?? "Proposed Plan"
     const lines = items.map((item) => `- ${item.label}`)
     markdown = `# ${title}\n\n${lines.join("\n")}`
+  } else if (activityPlan && activityPlan.length > 0) {
+    const lines = activityPlan.map(
+      (step: any) =>
+        `### Step ${step.order ?? ""}: ${step.task ?? ""}\n${step.details ?? ""}`
+    )
+    markdown = `# Proposed Plan\n\n${lines.join("\n\n")}`
   } else {
     markdown = "# Plan\n\nReview the generated plan below."
   }
