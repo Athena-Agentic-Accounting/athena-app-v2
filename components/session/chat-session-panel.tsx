@@ -262,15 +262,20 @@ export function ChatSessionPanel({
                   const hasApprovalGate = all.some((e) => e.event.type === "approval_gate")
                   if (hasApprovalGate) return false
                 }
-                // If it's an approval gate, only show the latest occurrence for that gateId
+                // If it's an approval gate, only show the latest occurrence (by gateId, title, or latest gate)
                 if (event.event.type === "approval_gate") {
                   const gateId = event.event.data.gateId
-                  if (gateId) {
-                    const lastGateIndex = all.findLastIndex(
-                      (e) => e.event.type === "approval_gate" && e.event.data.gateId === gateId,
-                    )
-                    return index === lastGateIndex
-                  }
+                  const title = (event.event.data.title || "").trim().toLowerCase()
+                  const lastGateIndex = all.findLastIndex((e) => {
+                    if (e.event.type !== "approval_gate") return false
+                    const otherGateId = e.event.data.gateId
+                    const otherTitle = (e.event.data.title || "").trim().toLowerCase()
+                    if (gateId && otherGateId && gateId === otherGateId) return true
+                    if (title && otherTitle && title === otherTitle) return true
+                    // If multiple approval gates exist without distinct titles, collapse to latest
+                    return !title || !otherTitle
+                  })
+                  return index === lastGateIndex
                 }
                 return true
               })

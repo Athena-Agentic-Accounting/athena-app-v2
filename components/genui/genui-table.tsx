@@ -28,7 +28,7 @@ function formatCellValue(value: unknown, format: TableColumnDef["format"] = "tex
 export function GenUITable({ columns, rows, className }: GenUITableProps) {
   return (
     <div className={cn("w-full overflow-x-auto", className)}>
-      <table className="w-full text-left text-sm">
+      <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
           <tr className="border-b border-border">
             {columns.map((column) => {
