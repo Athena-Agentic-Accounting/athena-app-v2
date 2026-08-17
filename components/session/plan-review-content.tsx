@@ -78,7 +78,7 @@ export function PlanReviewContent({ markdown, table }: PlanReviewContentProps) {
               Prepaid amortizations calculated across active contracts
             </p>
           </header>
-          <div className="w-full overflow-x-auto">
+          <div className="w-full min-w-0 overflow-x-auto rounded-lg border border-border/60 p-2">
             <GenUITable columns={table.columns} rows={table.rows} />
           </div>
         </section>
