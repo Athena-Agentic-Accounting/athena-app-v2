@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth, useClerk, useUser } from "@clerk/nextjs"
 import {
+  RiArrowDownSLine,
   RiLogoutBoxRLine,
   RiPlugLine,
   RiSparklingLine,
@@ -37,6 +38,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { useTenantConfig } from "@/hooks/use-tenant-config"
 import {
@@ -45,6 +47,7 @@ import {
   useRecentItems,
 } from "@/lib/navigation/recents"
 import { getVisibleNavItems, isNavItemActive } from "@/lib/navigation/sidebar-nav"
+import { cn } from "@/lib/utils"
 
 function AthenaLogo() {
   return (
@@ -116,6 +119,7 @@ export function AppSidebar() {
   const { isInHouse } = useTenantConfig()
   const navItems = getVisibleNavItems({ isInHouse })
   const recentItems = useRecentItems()
+  const [recentOpen, setRecentOpen] = useState(true)
 
   return (
     <Sidebar
@@ -123,8 +127,9 @@ export function AppSidebar() {
       className="!border-r-0 text-xs [&_[data-slot=sidebar-group-label]]:text-[11px] [&_[data-slot=sidebar-menu-badge]]:text-[10px] [&_[data-slot=sidebar-menu-button]]:text-xs [&_[data-slot=sidebar-menu-button]_svg]:size-3.5"
     >
       <SidebarHeader className="gap-2.5 p-2.5">
-        <div className="flex items-center gap-2 px-1 group-data-[collapsible=icon]:justify-center">
+        <div className="flex items-center justify-between px-1 group-data-[collapsible=icon]:justify-center">
           <AthenaLogo />
+          <SidebarTrigger className="size-6 text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:hidden" />
         </div>
         <ClientSelector />
       </SidebarHeader>
@@ -169,23 +174,43 @@ export function AppSidebar() {
             <SidebarSeparator className="mx-2.5" />
 
             <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-              <SidebarGroupLabel>Recent</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {recentItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild className="h-auto py-1.5">
-                        <Link href={item.href} title={`${RECENT_KIND_LABELS[item.kind]} · ${item.label}`}>
-                          <span className="flex-1 truncate text-xs">{item.label}</span>
-                          <span className="text-[11px] text-muted-foreground">
-                            {formatRelativeTime(item.visitedAt)}
-                          </span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
+              <div className="flex items-center justify-between px-2 py-1">
+                <SidebarGroupLabel className="p-0 text-[11px] font-medium text-muted-foreground">
+                  Recent
+                </SidebarGroupLabel>
+                <button
+                  type="button"
+                  onClick={() => setRecentOpen((prev) => !prev)}
+                  className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  aria-label={recentOpen ? "Collapse recents" : "Expand recents"}
+                >
+                  <RiArrowDownSLine
+                    className={cn(
+                      "size-3.5 transition-transform duration-200",
+                      !recentOpen && "-rotate-90",
+                    )}
+                  />
+                </button>
+              </div>
+
+              {recentOpen ? (
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {recentItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton asChild className="h-auto py-1.5">
+                          <Link href={item.href} title={`${RECENT_KIND_LABELS[item.kind]} · ${item.label}`}>
+                            <span className="flex-1 truncate text-xs">{item.label}</span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {formatRelativeTime(item.visitedAt)}
+                            </span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              ) : null}
             </SidebarGroup>
           </>
         ) : null}
