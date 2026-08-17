@@ -183,7 +183,22 @@ export function ApprovalGateCard({
     journalEntryData?.lines ?? [],
   )
 
-  const resolvedDecision = localDecision ?? decision
+  const resolvedDecision =
+    localDecision ??
+    decision ??
+    (data.status === "approved" || data.status === "resolved"
+      ? {
+          decision: "approve" as const,
+          decidedBy: "You",
+          decidedAt: "Approved",
+        }
+      : data.status === "rejected"
+        ? {
+            decision: "reject" as const,
+            decidedBy: "You",
+            decidedAt: "Rejected",
+          }
+        : undefined)
 
   async function submitDecision(
     nextDecision: ApprovalDecision,
@@ -227,8 +242,23 @@ export function ApprovalGateCard({
             : "Edited approval recorded",
       )
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong."
+      if (msg.toLowerCase().includes("already resolved") || msg.toLowerCase().includes("approved")) {
+        setLocalDecision({
+          decision: "approve",
+          decidedBy: "You",
+          decidedAt: new Date().toLocaleTimeString(undefined, {
+            hour: "numeric",
+            minute: "2-digit",
+          }),
+        })
+        setRejectOpen(false)
+        setEditOpen(false)
+        toast.info("Gate already resolved as Approved")
+        return
+      }
       toast.error("Could not record decision", {
-        description: err instanceof Error ? err.message : "Something went wrong.",
+        description: msg,
       })
     } finally {
       setSubmitting(false)

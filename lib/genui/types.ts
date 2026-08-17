@@ -86,6 +86,7 @@ export type ApprovalGateCardData = {
   payload: Record<string, unknown>
   pendingAction: { target: string; args: Record<string, unknown> }
   stepIndex?: number
+  status?: string
 }
 
 export type QuestionChoiceOption = {

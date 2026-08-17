@@ -449,7 +449,16 @@ export function useActivitySession(
     ) => {
       const token = await getToken();
       setIsAwaitingResponse(true);
-      await decideAgentApproval(token, gateId, payload);
+      try {
+        await decideAgentApproval(token, gateId, payload);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message.toLowerCase() : "";
+        if (msg.includes("already resolved") || msg.includes("approved")) {
+          // Handled gracefully as already resolved
+        } else {
+          throw err;
+        }
+      }
       setStreamEvents((current) =>
         current.filter((event) => {
           if (event.event.type !== "approval_gate") return true;
