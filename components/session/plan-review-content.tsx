@@ -1,6 +1,6 @@
 "use client"
 
-import { RiCheckLine, RiListCheck2 } from "@remixicon/react"
+import { RiListCheck2 } from "@remixicon/react"
 
 import { GenUITable } from "@/components/genui/genui-table"
 import { MarkdownContent } from "@/components/session/markdown-content"
@@ -23,12 +23,20 @@ function parsePlanSteps(text: string): { title: string; steps: string[] } | null
   const firstLine = lines[0].replace(/^#+\s*/, "").trim()
   const isPlanHeading = firstLine.toLowerCase().includes("plan")
 
+  // Rich plans with sections should retain their document hierarchy. Only
+  // convert a simple heading + list payload into the numbered plan treatment.
+  if (lines.slice(1).some((line) => /^#{2,6}\s+/.test(line))) return null
+
   const title = isPlanHeading ? firstLine : "Proposed Execution Plan"
   const rawSteps = isPlanHeading ? lines.slice(1) : lines
 
-  const steps = rawSteps.map((step) =>
-    step.replace(/^(\d+[\.\)]\s*|[-*]\s*)/, "").trim(),
-  ).filter(Boolean)
+  if (!rawSteps.every((step) => /^(\d+[\.\)]\s+|[-*]\s+)/.test(step))) {
+    return null
+  }
+
+  const steps = rawSteps
+    .map((step) => step.replace(/^(\d+[\.\)]\s*|[-*]\s*)/, "").trim())
+    .filter(Boolean)
 
   if (steps.length === 0) return null
 
@@ -69,8 +77,8 @@ export function PlanReviewContent({ markdown, table }: PlanReviewContentProps) {
       ) : null}
 
       {hasTable && table ? (
-        <section className="rounded-xl border border-border bg-card p-5">
-          <header className="mb-4">
+        <section className="bg-card">
+          <header className="border border-b-0 border-border bg-muted/20 px-4 py-3">
             <h3 className="text-sm font-medium text-foreground">
               Schedule & Workpaper Preview
             </h3>
@@ -78,9 +86,7 @@ export function PlanReviewContent({ markdown, table }: PlanReviewContentProps) {
               Prepaid amortizations calculated across active contracts
             </p>
           </header>
-          <div className="w-full overflow-x-auto">
-            <GenUITable columns={table.columns} rows={table.rows} />
-          </div>
+          <GenUITable columns={table.columns} rows={table.rows} />
         </section>
       ) : null}
 

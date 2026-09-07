@@ -460,9 +460,24 @@ export function useActivitySession(
         }
       }
       setStreamEvents((current) =>
-        current.filter((event) => {
-          if (event.event.type !== "approval_gate") return true;
-          return event.event.data.gateId !== gateId;
+        current.map((event) => {
+          if (
+            event.event.type !== "approval_gate" ||
+            event.event.data.gateId !== gateId
+          ) {
+            return event;
+          }
+
+          return {
+            ...event,
+            event: {
+              ...event.event,
+              data: {
+                ...event.event.data,
+                status: payload.decision === "reject" ? "rejected" : "resolved",
+              },
+            },
+          };
         }),
       );
       toast.success("Decision recorded");

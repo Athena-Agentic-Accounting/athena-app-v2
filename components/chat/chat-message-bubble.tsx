@@ -2,7 +2,6 @@
 
 import { MarkdownContent } from "@/components/session/markdown-content"
 import type { SessionChatMessage } from "@/lib/session/map-messages"
-import { cn } from "@/lib/utils"
 
 type ChatMessageBubbleProps = {
   message: SessionChatMessage
@@ -11,21 +10,25 @@ type ChatMessageBubbleProps = {
 export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
   const isUser = message.role === "user"
 
-  return (
-    <div className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}>
-      <div
-        className={cn(
-          "max-w-[min(85%,42rem)] text-sm leading-relaxed",
-          isUser
-            ? "rounded-2xl rounded-br-md bg-muted px-4 py-2.5 text-foreground"
-            : "rounded-2xl rounded-bl-md border border-border/60 bg-background px-4 py-3 text-foreground shadow-xs",
-        )}
-      >
-        {isUser ? (
-          <p className="whitespace-pre-wrap">{message.content}</p>
-        ) : (
+  if (!isUser) {
+    return (
+      <article data-chat-interface className="w-full px-1">
+        <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          Athena
+        </p>
+        <div className="text-sm leading-relaxed text-foreground">
           <MarkdownContent markdown={message.content} />
-        )}
+        </div>
+      </article>
+    )
+  }
+
+  return (
+    <div data-chat-interface className="flex w-full justify-end">
+      <div
+        className="max-w-[85%] rounded-xl rounded-br-sm bg-muted px-3.5 py-2.5 text-sm leading-relaxed text-foreground"
+      >
+        <p className="whitespace-pre-wrap">{message.content}</p>
       </div>
     </div>
   )

@@ -7,6 +7,7 @@ import { toast } from "sonner"
 
 import { SkillForm, type SkillFormValues } from "@/components/skills/skill-form"
 import { useWorkspacePermissions } from "@/hooks/use-workspace-permissions"
+import { listClients, type ApiClient } from "@/lib/api/clients"
 import { createSkill } from "@/lib/api/skills"
 
 export function SkillCreateView() {
@@ -14,12 +15,28 @@ export function SkillCreateView() {
   const { getToken } = useAuth()
   const { canManageSkills } = useWorkspacePermissions()
   const [submitting, setSubmitting] = useState(false)
+  const [clients, setClients] = useState<ApiClient[]>([])
 
   useEffect(() => {
     if (!canManageSkills) {
       router.replace("/skills")
+      return
     }
-  }, [canManageSkills, router])
+
+    let cancelled = false
+    void getToken()
+      .then((token) => listClients(token))
+      .then((items) => {
+        if (!cancelled) setClients(items)
+      })
+      .catch(() => {
+        if (!cancelled) setClients([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [canManageSkills, getToken, router])
 
   async function handleSubmit(values: SkillFormValues) {
     setSubmitting(true)
@@ -51,6 +68,7 @@ export function SkillCreateView() {
       breadcrumbs={[{ label: "Skills", href: "/skills" }, { label: "New skill" }]}
       submitLabel="Create skill"
       cancelHref="/skills"
+      clients={clients}
       submitting={submitting}
       onSubmit={handleSubmit}
     />

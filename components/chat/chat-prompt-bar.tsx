@@ -55,6 +55,7 @@ export function ChatPromptBar({
 
   return (
     <div
+      data-chat-interface
       className={cn(
         "rounded-xl border border-border bg-background p-3",
         className,
@@ -95,7 +96,7 @@ export function ChatPromptBar({
                 <RiArrowDownSLine className="size-3.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
+            <DropdownMenuContent data-chat-interface align="start">
               <DropdownMenuItem onClick={() => setMode("default")}>
                 Default
               </DropdownMenuItem>

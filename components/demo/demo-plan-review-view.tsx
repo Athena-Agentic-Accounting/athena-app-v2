@@ -11,7 +11,6 @@ export function DemoPlanReviewView() {
       thoughts={PLAN_REVIEW_SESSION.thoughts}
       streamEvents={PLAN_REVIEW_SESSION.streamEvents}
       artifact={PLAN_REVIEW_SESSION.artifact}
-      showPlanAction={PLAN_REVIEW_SESSION.showPlanAction}
       onPlanDecision={PLAN_REVIEW_SESSION.onPlanDecision}
     />
   )

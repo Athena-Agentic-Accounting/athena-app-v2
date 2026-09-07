@@ -85,10 +85,11 @@ export function ClientSelector() {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex w-full items-center gap-2.5 rounded-md p-2 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:bg-sidebar-accent"
+              className="flex w-full items-center gap-2.5 overflow-hidden rounded-md p-2 text-left outline-none transition-colors duration-150 hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+              aria-label={`Switch client: ${selectedClient.name}`}
             >
-              <ClientBuildingIcon />
-              <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+              <ClientBuildingIcon className="group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:rounded-md group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:ring-0" />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
                 <span className="truncate text-xs font-normal text-foreground">
                   {selectedClient.name}
                 </span>
@@ -96,7 +97,7 @@ export function ClientSelector() {
                   {selectedClientId === "all" ? "Workspace view" : "Client"}
                 </span>
               </div>
-              <div className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border/80 bg-background shadow-xs">
+              <div className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border/80 bg-background shadow-xs group-data-[collapsible=icon]:hidden">
                 <RiExpandUpDownLine className="size-3.5 text-muted-foreground" />
               </div>
             </button>

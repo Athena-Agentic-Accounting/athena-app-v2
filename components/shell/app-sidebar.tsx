@@ -126,8 +126,8 @@ export function AppSidebar() {
       collapsible="icon"
       className="!border-r-0 text-xs [&_[data-slot=sidebar-group-label]]:text-[11px] [&_[data-slot=sidebar-menu-badge]]:text-[10px] [&_[data-slot=sidebar-menu-button]]:text-xs [&_[data-slot=sidebar-menu-button]_svg]:size-3.5"
     >
-      <SidebarHeader className="gap-2.5 p-2.5">
-        <div className="flex items-center justify-between px-1 group-data-[collapsible=icon]:justify-center">
+      <SidebarHeader className="gap-2.5 p-2.5 group-data-[collapsible=icon]:p-2">
+        <div className="flex items-center justify-between px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <AthenaLogo />
           <SidebarTrigger className="size-6 text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:hidden" />
         </div>
@@ -216,13 +216,16 @@ export function AppSidebar() {
         ) : null}
       </SidebarContent>
 
-      <SidebarFooter className="p-2.5">
+      <SidebarFooter className="p-2.5 group-data-[collapsible=icon]:p-2">
         <div className="flex items-center gap-1.5 group-data-[collapsible=icon]:flex-col">
           <UserMenu />
-          <Button asChild className="h-8 flex-1 justify-center text-xs shadow-none">
-            <Link href="/home">
+          <Button
+            asChild
+            className="h-8 flex-1 justify-center text-xs shadow-none group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:p-0"
+          >
+            <Link href="/home" aria-label="New chat">
               <RiSparklingLine className="size-3.5" data-icon="inline-start" />
-              New chat
+              <span className="group-data-[collapsible=icon]:hidden">New chat</span>
             </Link>
           </Button>
         </div>

@@ -1,8 +1,52 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
+
+/* Accounting and application surfaces use a square, ledger-like geometry.
+   Conversation UI remains softer, and loading indicators retain their shape. */
+body :where(*):not(
+  [data-chat-interface],
+  [data-chat-interface] *,
+  [data-slot="spinner"],
+  [data-slot="spinner"] *
+) {
+  border-radius: 0 !important;
+}
+
+@keyframes athena-thinking-shimmer {
+  0% {
+    background-position: 140% 0;
+  }
+
+  100% {
+    background-position: -40% 0;
+  }
+}
+
+.athena-thinking-shimmer {
+  color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--muted-foreground) 55%, transparent) 25%,
+    var(--foreground) 48%,
+    color-mix(in oklab, var(--muted-foreground) 55%, transparent) 72%
+  );
+  background-position: 140% 0;
+  background-size: 220% 100%;
+  background-clip: text;
+  animation: athena-thinking-shimmer 1.8s cubic-bezier(0.2, 0, 0, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .athena-thinking-shimmer {
+    animation: none;
+    color: var(--muted-foreground);
+    background: none;
+  }
+}
 
 /* Neutrals carry a small warm chroma (~0.004-0.008 at hue 55-75) rather than
    sitting at chroma 0. Surfaces read as paper instead of screen grey, and the
@@ -89,6 +133,7 @@
 @theme inline {
     --font-sans: "Stack Sans Headline", var(--font-stack-sans-headline), system-ui, sans-serif;
     --font-heading: "Stack Sans Headline", var(--font-stack-sans-headline), system-ui, sans-serif;
+    --font-document: var(--font-geist), "Geist", Arial, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -182,5 +227,16 @@
 
   [data-slot="sidebar-container"][data-side="left"] {
     border-right: none;
+  }
+}
+
+@layer components {
+  .font-document,
+  [data-official-content] {
+    font-family: var(--font-geist), "Geist", Arial, sans-serif;
+  }
+
+  table {
+    font-family: var(--font-geist), "Geist", Arial, sans-serif;
   }
 }
