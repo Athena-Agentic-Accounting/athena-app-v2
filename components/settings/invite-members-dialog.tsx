@@ -127,22 +127,30 @@ export function InviteMembersDialog({ open, onOpenChange }: InviteMembersDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] w-[calc(100%-2rem)] overflow-hidden sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite teammates</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg font-semibold tracking-tight">
+            Invite teammates
+          </DialogTitle>
+          <DialogDescription className="max-w-sm text-pretty leading-relaxed">
             Invite people to your firm&apos;s workspace. They&apos;ll receive an email
             with a sign-in link.
           </DialogDescription>
         </DialogHeader>
 
         {!isLoaded ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex min-h-48 items-center justify-center px-5 pb-5">
             <Spinner className="size-5 text-muted-foreground" />
           </div>
         ) : (
-          <div className="space-y-5">
-            <div className="space-y-3">
+          <div className="min-h-0 overflow-y-auto px-5 pb-5">
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleInvite()
+              }}
+            >
               <Field>
                 <FieldLabel htmlFor="invite-email">Email address</FieldLabel>
                 <Input
@@ -151,9 +159,8 @@ export function InviteMembersDialog({ open, onOpenChange }: InviteMembersDialogP
                   placeholder="name@firm.com"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") void handleInvite()
-                  }}
+                  autoComplete="email"
+                  autoFocus
                 />
               </Field>
               <Field>
@@ -171,32 +178,41 @@ export function InviteMembersDialog({ open, onOpenChange }: InviteMembersDialogP
                 </NativeSelect>
               </Field>
               <Button
+                type="submit"
                 className="w-full"
                 disabled={sending || !email.trim()}
-                onClick={() => void handleInvite()}
               >
-                {sending ? <Spinner className="size-3.5" /> : "Send invitation"}
+                {sending ? (
+                  <>
+                    <Spinner data-icon="inline-start" />
+                    Sending invitation…
+                  </>
+                ) : (
+                  "Send invitation"
+                )}
               </Button>
-            </div>
+            </form>
 
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">
+            <div className="mt-5 border-t border-border/60 pt-4">
+              <p className="mb-2.5 text-xs font-medium text-foreground">
                 Pending invitations
               </p>
               {loadingInvitations ? (
-                <div className="flex justify-center py-3">
+                <div className="flex min-h-16 items-center justify-center">
                   <Spinner className="size-4 text-muted-foreground" />
                 </div>
               ) : invitations.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No pending invitations.</p>
+                <p className="rounded-lg bg-muted/50 px-3 py-3 text-xs text-muted-foreground">
+                  No pending invitations.
+                </p>
               ) : (
-                <ul className="space-y-1.5">
+                <ul className="space-y-1.5" aria-label="Pending invitations">
                   {invitations.map((invitation) => (
                     <li
                       key={invitation.id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-border/70 px-3 py-2"
+                      className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2.5"
                     >
-                      <span className="min-w-0 truncate text-xs text-foreground">
+                      <span className="min-w-0 truncate text-sm text-foreground">
                         {invitation.emailAddress}
                       </span>
                       <span className="flex shrink-0 items-center gap-1.5">
@@ -206,11 +222,11 @@ export function InviteMembersDialog({ open, onOpenChange }: InviteMembersDialogP
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          className="size-6 text-muted-foreground"
+                          className="text-muted-foreground hover:text-destructive"
                           aria-label={`Revoke invitation to ${invitation.emailAddress}`}
                           onClick={() => void handleRevoke(invitation)}
                         >
-                          <RiCloseLine className="size-3.5" />
+                          <RiCloseLine className="size-4" />
                         </Button>
                       </span>
                     </li>
