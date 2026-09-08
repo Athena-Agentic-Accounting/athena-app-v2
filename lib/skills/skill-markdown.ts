@@ -35,28 +35,33 @@ export function buildSkillMarkdown(skill: ApiSkill): string {
   return `# ${skill.name}`
 }
 
-export const SKILL_BLANK_TEMPLATE = `# <Skill Name>
+export const SKILL_BLANK_TEMPLATE = `## Objective
+Describe the accounting outcome this procedure must achieve.
 
-**Category:** <CLOSE | RECONCILIATION | ONBOARDING | ...>
-**Core skill:** false
-**Customisable:** true
+## When to run
+- Define the event, period, or condition that triggers this skill.
 
-## Description
-<One or two sentences: what this skill does and why a client would run it.>
+## Required records
+- List the ledgers, schedules, contracts, or supporting documents needed.
 
-## Required Integrations
-- QUICKBOOKS
+## Procedure
+1. Describe the first action and the records it uses.
+2. Describe the validation or reconciliation step.
+3. Describe how the final workpaper is prepared.
 
-## Task Sequence
-1. <First task the agent performs>
-2. <Second task>
-3. <...>
+## Deliverables
+| Deliverable | Format | Review requirement |
+| --- | --- | --- |
+| Name the expected workpaper | Spreadsheet or journal entry | Preparer review |
 
-## Expected Outputs
-- <Artifact the client receives>
+## Control checks
+- State the totals, tie-outs, or evidence required before completion.
 
-## Approval Gates
-- After task **3**: \`gate_type\` — <what is being approved and why>
+## Approval requirements
+- Identify the point where reviewer approval is required.
+
+## Exception handling
+- Explain what the agent should do when records are missing or do not reconcile.
 `
 
 /** @deprecated Use SKILL_BLANK_TEMPLATE */

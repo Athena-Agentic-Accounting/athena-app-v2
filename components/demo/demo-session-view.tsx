@@ -24,7 +24,6 @@ function DemoSessionContent() {
       thoughts={FIXED_ASSETS_SESSION.thoughts}
       streamEvents={FIXED_ASSETS_SESSION.streamEvents}
       artifact={FIXED_ASSETS_SESSION.artifact}
-      showPlanAction={FIXED_ASSETS_SESSION.showPlanAction}
       onPlanDecision={FIXED_ASSETS_SESSION.onPlanDecision}
     />
   )

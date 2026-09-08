@@ -4,7 +4,7 @@ import { Toaster } from "sonner"
 
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { stackSansHeadline } from "@/lib/fonts"
+import { geist, stackSansHeadline } from "@/lib/fonts"
 
 import "./globals.css"
 
@@ -23,7 +23,7 @@ export default function RootLayout({
       <html
         lang="en"
         suppressHydrationWarning
-        className={`${stackSansHeadline.variable} ${stackSansHeadline.className} h-full antialiased`}
+        className={`${stackSansHeadline.variable} ${geist.variable} ${stackSansHeadline.className} h-full antialiased`}
       >
         {/* Browser extensions (Grammarly et al.) inject attributes onto <body>
             before React hydrates, which React reports as a hydration mismatch.

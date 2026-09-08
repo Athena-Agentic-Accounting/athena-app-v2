@@ -1,4 +1,4 @@
-import { Stack_Sans_Headline } from "next/font/google"
+import { Geist, Stack_Sans_Headline } from "next/font/google"
 
 export const stackSansHeadline = Stack_Sans_Headline({
   subsets: ["latin"],
@@ -10,3 +10,10 @@ export const stackSansHeadline = Stack_Sans_Headline({
 
 export const stackSansHeadlineFamily =
   '"Stack Sans Headline", var(--font-stack-sans-headline), system-ui, sans-serif'
+
+export const geist = Geist({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-geist",
+  fallback: ["Arial", "sans-serif"],
+})

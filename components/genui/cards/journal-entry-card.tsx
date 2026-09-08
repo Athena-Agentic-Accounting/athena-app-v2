@@ -28,18 +28,18 @@ export function JournalEntryCardBody({
   return (
     <>
       <div className="w-full overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-border text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              <th className="w-[50%] min-w-[130px] px-2.5 py-2 text-left">Account</th>
-              <th className="w-[25%] min-w-[85px] px-2.5 py-2 text-right">Debit</th>
-              <th className="w-[25%] min-w-[85px] px-2.5 py-2 text-right">Credit</th>
+        <table className="w-full border-collapse border border-border text-left text-sm">
+          <thead className="bg-muted/30">
+            <tr className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <th className="w-[50%] min-w-[130px] border border-border px-3 py-2.5 text-left">Account</th>
+              <th className="w-[25%] min-w-[85px] border border-border px-3 py-2.5 text-right">Debit</th>
+              <th className="w-[25%] min-w-[85px] border border-border px-3 py-2.5 text-right">Credit</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border/40">
+          <tbody>
             {lines.map((line, index) => (
               <tr key={`${line.account}-${index}`} className="transition-colors hover:bg-muted/10">
-                <td className="px-2.5 py-2 align-top">
+                <td className="border border-border/70 px-3 py-2.5 align-top">
                   {editable ? (
                     <input
                       value={line.account}
@@ -57,7 +57,7 @@ export function JournalEntryCardBody({
                     </div>
                   )}
                 </td>
-                <td className="px-2.5 py-2 text-right font-mono text-sm tabular-nums text-foreground">
+                <td className="border border-border/70 px-3 py-2.5 text-right font-mono text-sm tabular-nums text-foreground">
                   {editable ? (
                     <input
                       type="number"
@@ -75,7 +75,7 @@ export function JournalEntryCardBody({
                     "—"
                   )}
                 </td>
-                <td className="px-2.5 py-2 text-right font-mono text-sm tabular-nums text-foreground">
+                <td className="border border-border/70 px-3 py-2.5 text-right font-mono text-sm tabular-nums text-foreground">
                   {editable ? (
                     <input
                       type="number"
@@ -99,14 +99,50 @@ export function JournalEntryCardBody({
         </table>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5 text-xs">
-        <p className={cn("font-medium", balanced ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>
-          {balanced
-            ? `Balanced ✓ Total: ${formatCurrency(totalDebit)}`
-            : `⚠ Out of balance by ${formatCurrency(Math.abs(totalDebit - totalCredit))}`}
-        </p>
-        {data.memo ? <p className="text-muted-foreground">Memo: {data.memo}</p> : null}
+      <div className="grid border border-t-0 border-border text-xs sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <div className="px-3 py-2.5">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Control check
+          </p>
+          <p
+            className={cn(
+              "mt-0.5 font-medium",
+              balanced
+                ? "text-emerald-700 dark:text-emerald-400"
+                : "text-destructive",
+            )}
+          >
+            {balanced
+              ? "In balance"
+              : `Out of balance · Difference ${formatCurrency(Math.abs(totalDebit - totalCredit))}`}
+          </p>
+        </div>
+        <div className="border-t border-border px-3 py-2.5 sm:min-w-32 sm:border-l sm:border-t-0">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Total debits
+          </p>
+          <p className="mt-0.5 text-right font-mono tabular-nums text-foreground">
+            {formatCurrency(totalDebit)}
+          </p>
+        </div>
+        <div className="border-t border-border px-3 py-2.5 sm:min-w-32 sm:border-l sm:border-t-0">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Total credits
+          </p>
+          <p className="mt-0.5 text-right font-mono tabular-nums text-foreground">
+            {formatCurrency(totalCredit)}
+          </p>
+        </div>
       </div>
+
+      {data.memo ? (
+        <div className="border border-t-0 border-border px-3 py-2.5 text-xs">
+          <span className="mr-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Memo
+          </span>
+          <span className="text-foreground/80">{data.memo}</span>
+        </div>
+      ) : null}
     </>
   )
 }

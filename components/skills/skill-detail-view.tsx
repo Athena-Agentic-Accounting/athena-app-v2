@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
@@ -32,25 +32,29 @@ export function SkillDetailView({ skillId }: SkillDetailViewProps) {
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
 
-  const loadSkill = useCallback(async () => {
-    setLoading(true)
-    try {
-      const token = await getToken()
-      const item = await getSkill(token, skillId)
-      setSkill(item)
-    } catch (err) {
-      setSkill(null)
-      toast.error("Could not load skill", {
-        description: err instanceof Error ? err.message : "Something went wrong.",
+  useEffect(() => {
+    let cancelled = false
+
+    void getToken()
+      .then((token) => getSkill(token, skillId))
+      .then((item) => {
+        if (!cancelled) setSkill(item)
       })
-    } finally {
-      setLoading(false)
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setSkill(null)
+        toast.error("Could not load skill", {
+          description: err instanceof Error ? err.message : "Something went wrong.",
+        })
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
     }
   }, [getToken, skillId])
-
-  useEffect(() => {
-    void loadSkill()
-  }, [loadSkill])
 
   async function handleDelete() {
     if (!skill || !isCustomSkill(skill) || !canManageSkills) return
@@ -155,8 +159,8 @@ export function SkillDetailView({ skillId }: SkillDetailViewProps) {
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-auto bg-background p-5">
-        <div className="w-full max-w-3xl">
+      <div className="min-h-0 flex-1 overflow-auto bg-background p-5 sm:p-6">
+        <div className="mx-auto w-full max-w-6xl">
           <SkillDetailCard skill={skill} />
           {!custom && customisable ? (
             <p className="mt-4 text-xs text-muted-foreground">

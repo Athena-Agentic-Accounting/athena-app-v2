@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { RiBookOpenLine } from "@remixicon/react"
+import { RiBookOpenLine, RiCodeLine, RiEyeLine, RiInformationLine } from "@remixicon/react"
 import { toast } from "sonner"
 
-import { SkillMarkdownLayout } from "@/components/skills/skill-markdown-layout"
 import { PageHeader } from "@/components/shell/page-header"
 import { MarkdownContent } from "@/components/session/markdown-content"
 import { Button } from "@/components/ui/button"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import type { ApiClient } from "@/lib/api/clients"
@@ -32,13 +31,23 @@ type SkillFormProps = {
   submitLabel: string
   cancelHref: string
   initial?: Partial<SkillFormValues>
-  /** When provided, shows an "Apply to" scope selector (whole firm / a client). */
   clients?: ApiClient[]
-  /** Optional notice, e.g. editing a core skill creates a copy for your firm. */
   forkNotice?: string
   submitting: boolean
   onSubmit: (values: SkillFormValues) => void
 }
+
+type EditorSection = "details" | "instructions" | "preview"
+
+const EDITOR_SECTIONS: {
+  id: EditorSection
+  label: string
+  icon: typeof RiInformationLine
+}[] = [
+  { id: "details", label: "Details", icon: RiInformationLine },
+  { id: "instructions", label: "Instructions", icon: RiCodeLine },
+  { id: "preview", label: "Review", icon: RiEyeLine },
+]
 
 function parseCommaList(value: string): string[] | undefined {
   const items = value
@@ -68,12 +77,17 @@ export function SkillForm({
   )
   const [content, setContent] = useState(initial?.content || SKILL_MARKDOWN_PLACEHOLDER)
   const [scope, setScope] = useState<string>(initial?.clientId ?? "org")
-  const [editorTab, setEditorTab] = useState<"write" | "preview">("write")
+  const [activeSection, setActiveSection] = useState<EditorSection>("details")
 
   const previewMarkdown = useMemo(
-    () => content.trim() || `# ${name.trim() || "Untitled skill"}`,
-    [content, name],
+    () => content.trim() || "## Instructions\nAdd the procedure this skill should follow.",
+    [content],
   )
+  const contentStats = useMemo(() => {
+    const words = content.trim() ? content.trim().split(/\s+/).length : 0
+    const lines = content ? content.split("\n").length : 0
+    return { words, lines }
+  }, [content])
 
   function handleSubmit() {
     const trimmedName = name.trim()
@@ -81,11 +95,13 @@ export function SkillForm({
     const body = content.trim()
 
     if (!trimmedName || !trimmedCategory) {
+      setActiveSection("details")
       toast.error("Name and category are required.")
       return
     }
     if (!body || body === SKILL_MARKDOWN_PLACEHOLDER.trim()) {
-      toast.error("Write the skill instructions in Markdown.")
+      setActiveSection("instructions")
+      toast.error("Replace the starter guidance with the skill instructions.")
       return
     }
 
@@ -119,142 +135,174 @@ export function SkillForm({
         }
       />
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-border/70 lg:border-r lg:border-b-0">
-          <div className="shrink-0 space-y-4 border-b border-border/70 px-6 py-4">
+      <nav className="shrink-0 border-b border-border bg-background px-5 sm:px-6" aria-label="Skill editor sections">
+        <div className="mx-auto flex w-full max-w-5xl" role="tablist">
+          {EDITOR_SECTIONS.map((section, index) => {
+            const Icon = section.icon
+            const selected = activeSection === section.id
+            return (
+              <button
+                key={section.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setActiveSection(section.id)}
+                className={cn(
+                  "flex h-12 min-w-0 items-center gap-2 border-b-2 px-3 text-xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:min-w-36",
+                  selected
+                    ? "border-primary font-medium text-foreground"
+                    : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
+                )}
+              >
+                <span className="font-document text-[10px] tabular-nums text-muted-foreground">{index + 1}</span>
+                <Icon className="size-3.5 shrink-0" />
+                <span className="truncate">{section.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </nav>
+
+      <div className="min-h-0 flex-1 overflow-auto bg-background">
+        {activeSection === "details" ? (
+          <main className="mx-auto w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-10">
+            <SectionIntroduction
+              eyebrow="Skill details"
+              title="Define the procedure"
+              description="Give the skill a clear accounting purpose, ownership scope, and the systems it may use."
+            />
+
             {forkNotice ? (
-              <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground ring-1 ring-inset ring-border/50">
+              <p className="mb-8 border-l-2 border-primary bg-muted/30 px-4 py-3 text-xs leading-5 text-muted-foreground">
                 {forkNotice}
               </p>
             ) : null}
 
-            <FieldGroup className="grid gap-3 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="skill-name">Name</FieldLabel>
-                <Input
-                  id="skill-name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Fixed asset roll-forward"
+            <div className="space-y-10">
+              <section aria-labelledby="skill-identity-heading">
+                <SectionHeading
+                  id="skill-identity-heading"
+                  title="Identity"
+                  description="How accountants will find and understand this skill."
                 />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="skill-category">Category</FieldLabel>
-                <Input
-                  id="skill-category"
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value)}
-                  placeholder="Close tasks"
+
+                <FieldGroup className="gap-6">
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor="skill-name">Name</FieldLabel>
+                      <Input id="skill-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Fixed asset roll-forward" />
+                      <FieldDescription className="text-xs">Use the action or procedure accountants will recognise.</FieldDescription>
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="skill-category">Category</FieldLabel>
+                      <Input id="skill-category" value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Close tasks" />
+                      <FieldDescription className="text-xs">Groups the skill in the procedure library.</FieldDescription>
+                    </Field>
+                  </div>
+
+                  <Field>
+                    <FieldLabel htmlFor="skill-description">Purpose</FieldLabel>
+                    <Input id="skill-description" value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Roll forward prior-month schedules and reconcile to the general ledger" />
+                    <FieldDescription className="text-xs">One sentence describing the result this skill should produce.</FieldDescription>
+                  </Field>
+                </FieldGroup>
+              </section>
+
+              <section aria-labelledby="skill-access-heading">
+                <SectionHeading
+                  id="skill-access-heading"
+                  title="Access and scope"
+                  description="Where the procedure applies and which connected systems it can use."
                 />
-              </Field>
-            </FieldGroup>
 
-            <Field>
-              <FieldLabel htmlFor="skill-description">Summary (optional)</FieldLabel>
-              <Input
-                id="skill-description"
-                value={summary}
-                onChange={(event) => setSummary(event.target.value)}
-                placeholder="Roll forward prior-month schedules and reconcile to GL"
-              />
-            </Field>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel htmlFor="skill-integrations">Required systems</FieldLabel>
+                    <Input id="skill-integrations" value={requiredIntegrations} onChange={(event) => setRequiredIntegrations(event.target.value)} placeholder="quickbooks, google_drive" />
+                    <FieldDescription className="text-xs">Enter system keys separated by commas.</FieldDescription>
+                  </Field>
 
-            <FieldGroup className="grid gap-3 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="skill-integrations">Integrations</FieldLabel>
-                <Input
-                  id="skill-integrations"
-                  value={requiredIntegrations}
-                  onChange={(event) => setRequiredIntegrations(event.target.value)}
-                  placeholder="quickbooks, google_drive"
-                />
-              </Field>
-              {clients ? (
-                <Field>
-                  <FieldLabel htmlFor="skill-scope">Apply to</FieldLabel>
-                  <select
-                    id="skill-scope"
-                    value={scope}
-                    onChange={(event) => setScope(event.target.value)}
-                    className="h-9 rounded-lg border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                  >
-                    <option value="org">Whole firm</option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              ) : null}
-            </FieldGroup>
-
-            <div className="inline-flex w-fit rounded-lg bg-muted/70 p-1 ring-1 ring-inset ring-border/50 lg:hidden">
-              <button
-                type="button"
-                onClick={() => setEditorTab("write")}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                  editorTab === "write"
-                    ? "bg-background text-foreground shadow-xs ring-1 ring-border/50"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Write
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditorTab("preview")}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                  editorTab === "preview"
-                    ? "bg-background text-foreground shadow-xs ring-1 ring-border/50"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Preview
-              </button>
+                  {clients ? (
+                    <Field>
+                      <FieldLabel htmlFor="skill-scope">Applies to</FieldLabel>
+                      <select id="skill-scope" value={scope} onChange={(event) => setScope(event.target.value)} className="h-9 border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
+                        <option value="org">Whole firm</option>
+                        {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+                      </select>
+                      <FieldDescription className="text-xs">Choose firm-wide availability or a single client.</FieldDescription>
+                    </Field>
+                  ) : null}
+                </div>
+              </section>
             </div>
-          </div>
 
-          <div
-            className={cn(
-              "min-h-0 flex-1 overflow-auto px-6 py-4",
-              editorTab === "preview" ? "lg:hidden" : undefined,
-            )}
-          >
-            <textarea
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              placeholder={SKILL_MARKDOWN_PLACEHOLDER}
-              className="min-h-[calc(100vh-22rem)] w-full resize-y rounded-lg border border-input bg-transparent px-4 py-4 font-mono text-sm leading-relaxed shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            />
-          </div>
-        </section>
+            <div className="mt-10 flex justify-end border-t border-border pt-5">
+              <Button size="sm" onClick={() => setActiveSection("instructions")}>Continue to instructions</Button>
+            </div>
+          </main>
+        ) : null}
 
-        <section
-          className={cn(
-            "hidden min-h-0 min-w-0 flex-1 flex-col lg:flex",
-            editorTab === "preview" ? "flex" : undefined,
-          )}
-        >
-          <div className="shrink-0 border-b border-border/70 px-6 py-3">
-            <p className="text-xs font-medium text-muted-foreground">Preview</p>
-          </div>
-          <SkillMarkdownLayout className="flex-1">
-            <MarkdownContent markdown={previewMarkdown} />
-          </SkillMarkdownLayout>
-        </section>
+        {activeSection === "instructions" ? (
+          <main className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-5 py-8 sm:px-8 sm:py-10">
+            <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <SectionIntroduction
+                eyebrow="Instructions"
+                title="Write the operating procedure"
+                description="Replace the starter guidance with the records, actions, controls, and approvals Athena should follow."
+                className="mb-0"
+              />
+              <span className="font-document shrink-0 text-[10px] tabular-nums text-muted-foreground">{contentStats.words} words / {contentStats.lines} lines</span>
+            </div>
+
+            <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder={SKILL_MARKDOWN_PLACEHOLDER} spellCheck aria-label="Skill instructions in Markdown" className="mt-6 min-h-[32rem] w-full flex-1 resize-y border border-input bg-muted/10 px-5 py-5 font-mono text-[13px] leading-6 text-foreground shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
+
+            <div className="mt-6 flex items-center justify-between border-t border-border pt-5">
+              <Button variant="outline" size="sm" onClick={() => setActiveSection("details")}>Back to details</Button>
+              <Button size="sm" onClick={() => setActiveSection("preview")}>Review document</Button>
+            </div>
+          </main>
+        ) : null}
+
+        {activeSection === "preview" ? (
+          <main className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-10">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <SectionIntroduction eyebrow="Final review" title="Confirm the skill specification" className="mb-0" />
+              <Button variant="outline" size="sm" onClick={() => setActiveSection("instructions")}>Edit instructions</Button>
+            </div>
+
+            <article className="font-document border border-border bg-card" data-official-content>
+              <header className="border-b border-border bg-muted/20 px-5 py-5 sm:px-8">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Skill specification</p>
+                <h2 className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-foreground">{name.trim() || "Untitled skill"}</h2>
+                {summary.trim() ? <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{summary.trim()}</p> : null}
+                <p className="mt-3 text-xs text-muted-foreground">{category.trim() || "Uncategorised"} / {scope === "org" ? "Whole firm" : "Client-specific"}</p>
+              </header>
+              <div className="px-5 py-7 sm:px-8 sm:py-9">
+                <MarkdownContent markdown={previewMarkdown} />
+              </div>
+            </article>
+          </main>
+        ) : null}
       </div>
+    </div>
+  )
+}
 
-      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/70 px-4 py-3 lg:hidden">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={cancelHref}>Cancel</Link>
-        </Button>
-        <Button size="sm" disabled={submitting} onClick={handleSubmit}>
-          {submitting ? <Spinner className="size-3.5" /> : submitLabel}
-        </Button>
-      </div>
+function SectionIntroduction({ eyebrow, title, description, className }: { eyebrow: string; title: string; description?: string; className?: string }) {
+  return (
+    <div className={cn("mb-9 max-w-xl", className)}>
+      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">{eyebrow}</p>
+      <h1 className="mt-2 text-xl font-medium tracking-tight text-foreground">{title}</h1>
+      {description ? <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p> : null}
+    </div>
+  )
+}
+
+function SectionHeading({ id, title, description }: { id: string; title: string; description: string }) {
+  return (
+    <div className="mb-5 border-b border-border pb-3">
+      <h2 id={id} className="text-sm font-medium text-foreground">{title}</h2>
+      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
     </div>
   )
 }

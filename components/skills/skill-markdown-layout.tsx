@@ -19,7 +19,9 @@ export function SkillMarkdownLayout({
   return (
     <section className={cn("flex min-h-0 min-w-0 flex-1 flex-col bg-background", className)}>
       <ScrollArea className="min-h-0 flex-1">
-        <div className="w-full px-8 py-6 pb-24">{children}</div>
+        <div className="font-document w-full px-5 py-7 pb-24 sm:px-8 lg:px-10 lg:py-9" data-official-content>
+          {children}
+        </div>
       </ScrollArea>
       {footer ? (
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/70 px-4 py-3">

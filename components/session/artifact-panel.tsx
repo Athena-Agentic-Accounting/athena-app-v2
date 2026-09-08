@@ -1,152 +1,268 @@
-"use client";
+"use client"
 
-import { useMemo, useState } from "react";
+import { useMemo, useState } from "react"
+import {
+  RiArrowDownSLine,
+  RiArrowLeftLine,
+  RiCheckLine,
+  RiCloseLine,
+} from "@remixicon/react"
 
-import { MarkdownContent } from "@/components/session/markdown-content";
-import { PlanReviewActions } from "@/components/session/plan-review-actions";
-import { PlanReviewContent } from "@/components/session/plan-review-content";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { PlanReviewDecision } from "@/lib/genui/types";
-import type { SessionArtifact } from "@/lib/session/types";
-import { cn } from "@/lib/utils";
+import { CardRenderer } from "@/components/genui/card-renderer"
+import { MarkdownContent } from "@/components/session/markdown-content"
+import { PlanReviewActions } from "@/components/session/plan-review-actions"
+import { PlanReviewContent } from "@/components/session/plan-review-content"
+import { SessionOutputIcon } from "@/components/session/session-output-icon"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import type { UseActivitySessionReturn } from "@/hooks/use-activity-session"
+import type { ApprovalDecisionRecord, ActivityStreamEvent, PlanReviewDecision } from "@/lib/genui/types"
+import {
+  enrichOutputEvent,
+  type SessionOutputItem,
+  type SessionOutputStatus,
+} from "@/lib/session/output-items"
+import { cn } from "@/lib/utils"
 
 type ArtifactPanelProps = {
-  artifact: SessionArtifact;
-  activeTabId?: string;
-  onActiveTabChange?: (tabId: string) => void;
+  outputs: SessionOutputItem[]
+  streamEvents: ActivityStreamEvent[]
+  activeOutputId?: string
+  onActiveOutputChange?: (outputId: string) => void
   onPlanDecision?: (
     decision: PlanReviewDecision,
     gateId?: string,
-  ) => void | Promise<void>;
-  className?: string;
-};
+  ) => void | Promise<void>
+  onApprovalDecision?: UseActivitySessionReturn["handleApprovalDecision"]
+  onBackToConversation?: () => void
+  onCloseWorkpaper?: () => void
+  className?: string
+}
 
 export function ArtifactPanel({
-  artifact,
-  activeTabId: controlledActiveTabId,
-  onActiveTabChange,
+  outputs,
+  streamEvents,
+  activeOutputId,
+  onActiveOutputChange,
   onPlanDecision,
+  onApprovalDecision,
+  onBackToConversation,
+  onCloseWorkpaper,
   className,
 }: ArtifactPanelProps) {
-  const [internalActiveTabId, setInternalActiveTabId] = useState(
-    artifact.activeTabId,
-  );
-  const [planDecided, setPlanDecided] = useState(false);
+  const [planDecided, setPlanDecided] = useState(false)
+  const [decidedMap, setDecidedMap] = useState<Record<string, ApprovalDecisionRecord>>({})
+  const activeOutput =
+    outputs.find((output) => output.id === activeOutputId) ?? outputs.at(-1)
 
-  const activeTabId = controlledActiveTabId ?? internalActiveTabId;
+  const activeEvent = useMemo(() => {
+    if (!activeOutput || activeOutput.source !== "event") return undefined
+    return enrichOutputEvent(activeOutput.event, streamEvents)
+  }, [activeOutput, streamEvents])
 
-  function setActiveTabId(tabId: string) {
-    setInternalActiveTabId(tabId);
-    onActiveTabChange?.(tabId);
-  }
+  if (!activeOutput) return null
 
-  const activeTab = useMemo(
-    () =>
-      artifact.tabs.find((tab) => tab.id === activeTabId) ?? artifact.tabs[0],
-    [activeTabId, artifact.tabs],
-  );
+  async function handlePlanDecision(decision: PlanReviewDecision) {
+    if (
+      !activeOutput ||
+      activeOutput.source !== "artifact" ||
+      activeOutput.tab.kind !== "plan_review"
+    ) {
+      return
+    }
 
-  function handlePlanDecision(decision: PlanReviewDecision) {
-    if (activeTab?.kind !== "plan_review") return;
-    onPlanDecision?.(decision, activeTab.gateId);
+    await onPlanDecision?.(decision, activeOutput.tab.gateId)
     if (decision === "reject" || decision === "start_now") {
-      setPlanDecided(true);
+      setPlanDecided(true)
     }
   }
 
-  if (!activeTab) return null;
+  const approvalHandler = onApprovalDecision
+    ? async (
+        gateId: string,
+        payload: {
+          decision: ApprovalDecisionRecord["decision"]
+          notes?: string
+          editedPayload?: Record<string, unknown>
+        },
+      ) => {
+        await onApprovalDecision(gateId, payload)
+        setDecidedMap((current) => ({
+          ...current,
+          [gateId]: {
+            decision: payload.decision,
+            decidedBy: "You",
+            decidedAt: new Date().toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "2-digit",
+            }),
+            notes: payload.notes,
+          },
+        }))
+      }
+    : undefined
 
   return (
     <section
       className={cn(
-        "flex min-h-0 min-w-0 flex-1 flex-col bg-background",
+        "font-document flex min-h-0 min-w-0 flex-1 flex-col bg-background",
         className,
       )}
+      aria-label="Activity workpapers"
     >
-      {/* Ramp-style Deliverable Workpaper Header */}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-5 py-3">
+      <header className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border/70 px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="text-sm font-medium text-foreground">
-            {activeTab.title || activeTab.slug || "Deliverable"}
-          </span>
-          <span className="rounded-md border border-border px-2 py-0.5 text-[11px] font-normal text-muted-foreground">
-            Draft · Requires review
-          </span>
-        </div>
-
-        {artifact.tabs.length > 1 ? (
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-0.5">
-            {artifact.tabs.map((tab) => {
-              const active = tab.id === activeTabId;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTabId(tab.id)}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 text-xs font-normal transition-colors",
-                    active
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {tab.title || tab.slug}
-                </button>
-              );
-            })}
+          {onBackToConversation ? (
+            <button
+              type="button"
+              className="flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+              aria-label="Back to conversation"
+              onClick={onBackToConversation}
+            >
+              <RiArrowLeftLine className="size-4" />
+            </button>
+          ) : null}
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium uppercase leading-3 tracking-[0.14em] text-muted-foreground">
+              Workpapers
+            </p>
+            <h1 className="truncate text-sm font-medium text-foreground">
+              {activeOutput.title}
+            </h1>
           </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {outputs.length > 1 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]"
+                  aria-label="Switch workpaper"
+                >
+                  <span className="hidden tabular-nums sm:inline">
+                    Workpapers ({outputs.length})
+                  </span>
+                  <span className="tabular-nums sm:hidden">{outputs.length}</span>
+                  <RiArrowDownSLine className="size-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                {outputs.map((output) => (
+                  <DropdownMenuItem
+                    key={output.id}
+                    onSelect={() => onActiveOutputChange?.(output.id)}
+                    className="min-h-11 gap-2.5 py-2"
+                  >
+                    <SessionOutputIcon
+                      output={output}
+                      className={cn(
+                        "size-4 shrink-0 text-muted-foreground",
+                        output.id === activeOutput.id && "text-primary",
+                      )}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-medium text-foreground">
+                        {output.title}
+                      </span>
+                      <span className="block text-[10px] text-muted-foreground">
+                        {output.category}
+                      </span>
+                    </span>
+                    {output.id === activeOutput.id ? (
+                      <RiCheckLine className="size-4 shrink-0 text-primary" />
+                    ) : null}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+          <OutputStatus status={activeOutput.status} />
+          {onCloseWorkpaper ? (
+            <button
+              type="button"
+              className="hidden size-9 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex"
+              aria-label="Close workpaper"
+              title="Close workpaper"
+              onClick={onCloseWorkpaper}
+            >
+              <RiCloseLine className="size-4" />
+            </button>
+          ) : null}
+        </div>
+      </header>
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="mx-auto w-full max-w-5xl px-4 py-5 pb-24 sm:px-6 sm:py-7 xl:px-8">
+            {activeOutput.source === "artifact" ? (
+              activeOutput.tab.kind === "document" ? (
+                <div className="mx-auto max-w-3xl">
+                  {activeOutput.tab.description ? (
+                    <div className="mb-6 border-b border-border/70 pb-4">
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        {activeOutput.tab.description}
+                      </p>
+                    </div>
+                  ) : null}
+                  <MarkdownContent markdown={activeOutput.tab.markdown} />
+                </div>
+              ) : (
+                <PlanReviewContent
+                  markdown={activeOutput.tab.markdown}
+                  table={activeOutput.tab.table}
+                />
+              )
+            ) : activeEvent ? (
+              <CardRenderer
+                event={activeEvent}
+                options={{
+                  activityId: activeEvent.activityId,
+                  canDecide: true,
+                  decision:
+                    activeEvent.event.type === "approval_gate" &&
+                    activeEvent.event.data.gateId
+                      ? decidedMap[activeEvent.event.data.gateId]
+                      : undefined,
+                  onDecision: approvalHandler,
+                }}
+              />
+            ) : null}
+          </div>
+        </ScrollArea>
+
+        {activeOutput.source === "artifact" &&
+        activeOutput.tab.kind === "plan_review" ? (
+          <PlanReviewActions
+            disabled={planDecided}
+            onDecision={(decision) => void handlePlanDecision(decision)}
+          />
         ) : null}
       </div>
-
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="mx-auto w-full max-w-4xl px-8 py-6 pb-24">
-          {activeTab.kind === "document" ? (
-            <>
-              {activeTab.description ? (
-                <div className="mb-6 rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Description
-                  </p>
-                  <p className="mt-1 text-sm leading-relaxed text-foreground/90">
-                    {activeTab.description}
-                  </p>
-                </div>
-              ) : null}
-              <MarkdownContent markdown={activeTab.markdown} />
-            </>
-          ) : (
-            <PlanReviewContent
-              markdown={activeTab.markdown}
-              table={activeTab.table}
-            />
-          )}
-        </div>
-      </ScrollArea>
-
-      {activeTab.kind === "plan_review" ? (
-        <PlanReviewActions
-          disabled={planDecided}
-          onDecision={handlePlanDecision}
-        />
-      ) : (
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/70 px-4 py-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="text-destructive"
-          >
-            Delete skill
-          </Button>
-          <Button type="button" variant="outline" size="sm">
-            Edit with Athena
-          </Button>
-          <Button type="button" size="sm" disabled>
-            Save
-          </Button>
-        </div>
-      )}
     </section>
-  );
+  )
+}
+
+function OutputStatus({ status }: { status: SessionOutputStatus }) {
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-md px-2 py-1 text-[10px] font-medium",
+        status === "ready" && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+        status === "review" && "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+        status === "attention" && "bg-destructive/10 text-destructive",
+      )}
+    >
+      {status === "ready"
+        ? "Ready"
+        : status === "review"
+          ? "Requires review"
+          : "Needs attention"}
+    </span>
+  )
 }

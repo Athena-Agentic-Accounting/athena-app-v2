@@ -47,19 +47,21 @@ function GenericPayloadList({ payload }: { payload: Record<string, unknown> }) {
     return (
       <div className="space-y-4">
         {extracted.map((entry, idx) => (
-          <div key={idx} className="rounded-lg border border-border/60 p-3 bg-muted/20">
+          <section key={idx} className="border border-border bg-background">
             {entry.memo || entry.title ? (
-              <div className="mb-2 text-xs font-semibold text-foreground">
+              <div className="border-b border-border bg-muted/20 px-3 py-2 text-xs font-semibold text-foreground">
                 {entry.memo ?? entry.title}
                 {entry.reversing ? (
-                  <span className="ml-2 rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 font-normal">
+                  <span className="ml-2 bg-amber-500/10 px-1.5 py-0.5 text-xs font-normal text-amber-700 dark:text-amber-400">
                     Auto-Reverses ({entry.reversalDate ?? "next month"})
                   </span>
                 ) : null}
               </div>
             ) : null}
-            <JournalEntryCardBody data={entry} />
-          </div>
+            <div className="p-3">
+              <JournalEntryCardBody data={entry} />
+            </div>
+          </section>
         ))}
       </div>
     )
@@ -106,19 +108,21 @@ function renderPayload(data: ApprovalGateCardData) {
       return (
         <div className="space-y-4">
           {journalEntries.map((entry, idx) => (
-            <div key={idx} className="rounded-lg border border-border/60 p-3 bg-muted/20">
+            <section key={idx} className="border border-border bg-background">
               {entry.memo || entry.title ? (
-                <div className="mb-2 flex items-center justify-between text-xs font-semibold text-foreground">
+                <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/20 px-3 py-2 text-xs font-semibold text-foreground">
                   <span>{entry.memo ?? entry.title}</span>
                   {entry.reversing ? (
-                    <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 font-normal">
+                    <span className="shrink-0 bg-amber-500/10 px-1.5 py-0.5 text-xs font-normal text-amber-700 dark:text-amber-400">
                       Auto-Reverses ({entry.reversalDate ?? "next month"})
                     </span>
                   ) : null}
                 </div>
               ) : null}
-              <JournalEntryCardBody data={entry} />
-            </div>
+              <div className="p-3">
+                <JournalEntryCardBody data={entry} />
+              </div>
+            </section>
           ))}
         </div>
       )
@@ -310,10 +314,6 @@ export function ApprovalGateCard({
         ) : (
           renderPayload(data)
         )}
-
-        <p className="text-xs text-muted-foreground">
-          Target: {data.pendingAction.target}
-        </p>
 
         {canDecide ? (
           <div className="space-y-3">
