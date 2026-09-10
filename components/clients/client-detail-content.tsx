@@ -13,7 +13,10 @@ import {
 } from "@remixicon/react"
 import { toast } from "sonner"
 
-import { ClientIntegrationsPanel } from "@/components/clients/client-integrations-panel"
+import {
+  ClientIntegrationsPanel,
+  DriveFolderBinding,
+} from "@/components/clients/client-integrations-panel"
 import { useClient } from "@/components/providers/client-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -105,6 +108,9 @@ export function ClientDetailContent({
 
   const [driveIndexCount, setDriveIndexCount] = useState<number | null>(null)
   const [driveLastSynced, setDriveLastSynced] = useState<string | null>(null)
+  const [driveNeedsSetup, setDriveNeedsSetup] = useState(false)
+  const [driveFolderId, setDriveFolderId] = useState<string | undefined>(undefined)
+  const [driveError, setDriveError] = useState<string | null>(null)
   const [driveSearchQuery, setDriveSearchQuery] = useState("")
   const [driveSearchResults, setDriveSearchResults] = useState<DriveSearchResult[]>([])
   const [driveSearching, setDriveSearching] = useState(false)
@@ -137,6 +143,9 @@ export function ClientDetailContent({
 
       setDriveIndexCount(index.documentCount ?? null)
       setDriveLastSynced(index.lastSyncedAt ?? index.last_synced_at ?? null)
+      setDriveNeedsSetup(index.needsSetup ?? !index.folderId)
+      setDriveFolderId(index.folderId ?? undefined)
+      setDriveError(index.lastError ?? null)
     } catch (err) {
       toast.error("Could not load the Drive index status", {
         description: err instanceof Error ? err.message : "Something went wrong.",
@@ -402,6 +411,21 @@ export function ClientDetailContent({
           <p className="text-sm text-muted-foreground">
             Connect Google Drive to index documents for this client.
           </p>
+        ) : driveNeedsSetup ? (
+          // Connected but no folder bound: authenticated and completely inert.
+          // The count would read a bare "0", which looks like an empty Drive
+          // rather than a setup step nobody was told about.
+          <div className="space-y-3">
+            <p className="text-sm text-amber-700">
+              No Drive folder bound yet — Athena cannot index or search this
+              client&apos;s documents until one is set.
+            </p>
+            <DriveFolderBinding
+              clientId={clientId}
+              boundFolderId={driveFolderId}
+              onBound={() => void loadDriveIndex()}
+            />
+          </div>
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -420,6 +444,12 @@ export function ClientDetailContent({
                 "Drive index status unavailable."
               )}
             </p>
+
+            {driveError ? (
+              <p className="text-xs text-amber-700">
+                Last sync failed: {driveError}
+              </p>
+            ) : null}
 
             <div className="relative">
               <RiSearchLine className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
