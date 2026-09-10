@@ -303,7 +303,7 @@ function IntegrationLogo({
 }
 
 /** Bound Drive folder from the detail payload's connectors (config.folderId). */
-function getDriveFolderId(detail: ApiClientDetail): string | undefined {
+export function getDriveFolderId(detail: ApiClientDetail): string | undefined {
   const connector = detail.connectors?.find(
     (c) => c.provider?.toUpperCase() === "GOOGLE_DRIVE",
   )
@@ -387,12 +387,15 @@ function IntegrationManagePanel({
  * engine never indexes this client's Drive ("no folder bound"), so document
  * search stays empty. Accepts a folder ID or a full Drive folder URL.
  */
-function DriveFolderBinding({
+export function DriveFolderBinding({
   clientId,
   boundFolderId,
+  onBound,
 }: {
   clientId: string
   boundFolderId?: string
+  /** Fired after a successful bind so callers can refresh index status. */
+  onBound?: () => void
 }) {
   const { getToken } = useAuth()
   const [folderInput, setFolderInput] = useState("")
@@ -417,6 +420,7 @@ function DriveFolderBinding({
       setSavedFolderId(folderId)
       setFolderInput("")
       toast.success("Drive folder bound — initial indexing started")
+      onBound?.()
     } catch (err) {
       toast.error("Could not bind Drive folder", {
         description: err instanceof Error ? err.message : "Something went wrong.",

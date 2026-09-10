@@ -5,6 +5,12 @@ export type DriveIndexStatus = {
   lastSyncedAt?: string
   last_synced_at?: string
   indexed?: boolean
+  /** Bound Drive folder, or null when the connection is authenticated but inert. */
+  folderId?: string | null
+  /** True when no folder is bound — indexing cannot run until one is. */
+  needsSetup?: boolean
+  /** Why the last index attempt failed, when it did. */
+  lastError?: string
 }
 
 export type DriveSearchResult = {

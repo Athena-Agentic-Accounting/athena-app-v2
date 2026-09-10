@@ -59,7 +59,13 @@ export async function createActivity(
 
 export async function submitActivityPrompt(
   token: string | null,
-  body: { clientId: string; prompt: string; mode?: "default" | "query" },
+  body: {
+    clientId: string
+    prompt: string
+    mode?: "default" | "query"
+    /** Ids of files already uploaded via /api/upload/file, linked to the new activity. */
+    fileIds?: string[]
+  },
 ): Promise<ActivityPromptResponse> {
   return backendRequest<ActivityPromptResponse>("/api/activities/prompt", {
     method: "POST",

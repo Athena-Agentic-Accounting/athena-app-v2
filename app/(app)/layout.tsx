@@ -12,7 +12,9 @@ export default async function AppLayout({
 }>) {
   const { userId } = await auth()
   if (!userId) {
-    return <AppShell>{children}</AppShell>
+    // Rendering the shell for a signed-out visitor showed app chrome and empty
+    // states for data they can't load. Send them to sign in instead.
+    redirect("/auth")
   }
 
   const user = await currentUser()
