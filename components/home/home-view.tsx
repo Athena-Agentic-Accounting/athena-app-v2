@@ -16,6 +16,7 @@ import { useClient } from "@/components/providers/client-provider"
 import { PageHeader } from "@/components/shell/page-header"
 import { Spinner } from "@/components/ui/spinner"
 import { submitActivityPrompt } from "@/lib/api/activities"
+import type { UploadedAttachment } from "@/lib/api/uploads"
 import type { SessionChatMessage } from "@/lib/session/map-messages"
 import type { ChecklistTask, TaskStatus } from "@/lib/checklist/mock-tasks"
 import { ALL_CLIENTS_ID } from "@/lib/clients/resolve-clients"
@@ -63,7 +64,11 @@ export function HomeView() {
     [tasks],
   )
 
-  async function handlePromptSubmit(message: string, mode: PromptMode) {
+  async function handlePromptSubmit(
+    message: string,
+    mode: PromptMode,
+    attachments?: UploadedAttachment[],
+  ) {
     if (clientSource !== "api") {
       toast.error("Clients are still loading", {
         description: "Give it a moment and try again.",
@@ -89,7 +94,12 @@ export function HomeView() {
 
     try {
       const token = await getToken()
-      const response = await submitActivityPrompt(token, { clientId, prompt: message, mode })
+      const response = await submitActivityPrompt(token, {
+        clientId,
+        prompt: message,
+        mode,
+        fileIds: attachments?.map((file) => file.id),
+      })
 
       const activityId = response.activity?.id
       if (activityId && (response.kind === "activity_proposed" || response.kind === "activity_created")) {
@@ -157,7 +167,10 @@ export function HomeView() {
             <div className="relative">
               <ChatPromptBar
                 placeholder="Describe a task, or ask a question…"
-                onSubmit={(message, mode) => void handlePromptSubmit(message, mode)}
+                clientId={resolvePromptClientId(selectedClientId, clients) ?? undefined}
+                onSubmit={(message, mode, attachments) =>
+                  void handlePromptSubmit(message, mode, attachments)
+                }
               />
               {submittingPrompt && messages.length === 0 ? (
                 <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/70">

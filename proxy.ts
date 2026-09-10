@@ -3,18 +3,12 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
 const isPublicRoute = createRouteMatcher([
   "/",
   "/auth(.*)",
-  "/api/auth(.*)",
+  // OAuth callbacks are hit by the provider, before any Clerk session exists.
   "/api/connections/(.*)/callback",
   "/api/integrations/(.*)/callback",
   "/integrations/callback(.*)",
   "/settings/connections(.*)",
   "/demo(.*)",
-  "/home(.*)",
-  "/board(.*)",
-  "/activities(.*)",
-  "/clients(.*)",
-  "/skills(.*)",
-  "/schedules(.*)",
 ])
 
 export const proxy = clerkMiddleware(

@@ -11,7 +11,10 @@ export function useWorkspacePermissions(clientDetail?: ApiClientDetail | null) {
   const { user } = useUser()
 
   const isWorkspaceAdmin = orgRole === "org:admin"
-  const canManageSkills = orgRole === "org:admin" || orgRole === "org:member"
+  // Only roles the engine's ROLE_MAPPING actually grants skill writes to.
+  // "org:member" is unmapped there, so granting it here just produced a full
+  // authoring UI where every save 403s.
+  const canManageSkills = orgRole === "org:admin" || orgRole === "org:accountant"
 
   const currentClientRole = useMemo((): ClientMemberRole | null => {
     if (!clientDetail?.members?.length || !user?.primaryEmailAddress?.emailAddress) {

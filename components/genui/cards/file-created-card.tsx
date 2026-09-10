@@ -31,7 +31,7 @@ export function FileCreatedCard({ data }: { data: FileCreatedCardData }) {
         </div>
         <Button asChild variant="outline" size="sm" className="h-8 shrink-0 gap-1 text-xs">
           <a href={data.fileUrl} target="_blank" rel="noreferrer">
-            Open in Drive
+            {data.fileUrl?.includes("drive.google.com") ? "Open in Drive" : "Download"}
             <RiExternalLinkLine className="size-3.5" />
           </a>
         </Button>
