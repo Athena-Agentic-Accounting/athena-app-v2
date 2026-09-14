@@ -302,12 +302,37 @@ function IntegrationLogo({
   )
 }
 
+const DRIVE_ID = /^[A-Za-z0-9_-]+$/
+
+/**
+ * Folder ID from a pasted Drive folder URL or bare ID. Mirrors the engine's
+ * parseDriveFolderId so a file link (e.g. a Sheet) is caught before it is sent.
+ */
+function parseDriveFolderInput(value: string): { folderId: string } | { error: string } {
+  const trimmed = value.trim()
+  if (DRIVE_ID.test(trimmed)) return { folderId: trimmed }
+
+  const match =
+    trimmed.match(/\/folders\/([A-Za-z0-9_-]+)/) ?? trimmed.match(/[?&]id=([A-Za-z0-9_-]+)/)
+  if (match) return { folderId: match[1] }
+
+  if (/\/(spreadsheets|document|presentation|forms|file)\/d\//.test(trimmed)) {
+    return {
+      error:
+        "That link points to a file, not a folder. Open the client's folder in Google Drive and copy its URL (it contains /folders/).",
+    }
+  }
+  return { error: "Paste a Google Drive folder URL or folder ID." }
+}
+
 /** Bound Drive folder from the detail payload's connectors (config.folderId). */
 export function getDriveFolderId(detail: ApiClientDetail): string | undefined {
   const connector = detail.connectors?.find(
     (c) => c.provider?.toUpperCase() === "GOOGLE_DRIVE",
   )
-  return connector?.config?.folderId ?? undefined
+  const folderId = connector?.config?.folderId
+  // Older bindings may hold a pasted URL rather than an ID; that is not bound.
+  return folderId && DRIVE_ID.test(folderId) ? folderId : undefined
 }
 
 function IntegrationManagePanel({
@@ -402,16 +427,13 @@ export function DriveFolderBinding({
   const [savedFolderId, setSavedFolderId] = useState(boundFolderId)
   const [isSaving, setIsSaving] = useState(false)
 
-  const parseFolderId = (value: string): string => {
-    const trimmed = value.trim()
-    // Accept a pasted Drive URL: .../folders/<id>?...
-    const match = trimmed.match(/folders\/([a-zA-Z0-9_-]+)/)
-    return match?.[1] ?? trimmed
-  }
-
   const handleSave = async () => {
-    const folderId = parseFolderId(folderInput)
-    if (!folderId) return
+    const parsed = parseDriveFolderInput(folderInput)
+    if ("error" in parsed) {
+      toast.error("Could not bind Drive folder", { description: parsed.error })
+      return
+    }
+    const { folderId } = parsed
 
     setIsSaving(true)
     try {
