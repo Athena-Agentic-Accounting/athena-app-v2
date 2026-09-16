@@ -152,7 +152,7 @@ export function SkillsView() {
               {activeTab === "custom"
                 ? "Workflows your firm created. Open any skill to read the full Markdown document."
                 : activeTab === "core"
-                  ? "Built-in skills shipped with Athena. These are read-only."
+                  ? "Built-in skills shipped with LUCA. These are read-only."
                   : "Browse the core library plus your firm's custom skills."}
             </p>
           </div>
@@ -206,7 +206,7 @@ export function SkillsView() {
                           </p>
                         ) : null}
                         <p className="mt-1 text-[10px] text-muted-foreground md:hidden">
-                          {[skill.category || "Uncategorised", custom ? "Firm" : "Athena core"].join(" / ")}
+                          {[skill.category || "Uncategorised", custom ? "Firm" : "LUCA core"].join(" / ")}
                         </p>
                       </div>
 
@@ -219,7 +219,7 @@ export function SkillsView() {
                           : "No external systems"}
                       </span>
                       <span className="hidden text-xs text-muted-foreground md:block">
-                        {custom ? "Firm" : "Athena"}
+                        {custom ? "Firm" : "LUCA"}
                       </span>
 
                       <RiArrowRightSLine className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-foreground" />

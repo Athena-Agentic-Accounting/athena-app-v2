@@ -170,7 +170,7 @@ export function WelcomeCheckSheet({
         <SheetHeader>
           <SheetTitle className="font-normal">Welcome Check — {clientName}</SheetTitle>
           <SheetDescription>
-            Athena is reading your connected data for the first time.
+            LUCA is reading your connected data for the first time.
           </SheetDescription>
         </SheetHeader>
 
@@ -193,7 +193,7 @@ export function WelcomeCheckSheet({
           {coa.phase === "missing" ? (
             <div className="flex flex-col gap-3 rounded-xl border border-dashed border-border/70 p-5 text-center">
               <p className="text-sm text-muted-foreground">
-                Upload your firm&apos;s chart of accounts (CSV) so Athena can map
+                Upload your firm&apos;s chart of accounts (CSV) so LUCA can map
                 transactions to the right accounts.
               </p>
               <input

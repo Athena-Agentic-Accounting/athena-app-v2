@@ -44,7 +44,7 @@ export function useNotificationStream(onNotification?: () => void | Promise<void
           void onNotification?.()
 
           if (event.title || event.message || event.body) {
-            toast.message(event.title ?? "Athena update", {
+            toast.message(event.title ?? "LUCA update", {
               description: event.message ?? event.body,
             })
           }

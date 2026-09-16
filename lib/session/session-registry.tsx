@@ -151,7 +151,7 @@ function BackgroundActivitySession({
   useEffect(() => {
     if (session.activity?.status === "awaiting_input") {
       markActivityNeedsInput(activityId)
-      toast.message("Athena needs your input", {
+      toast.message("LUCA needs your input", {
         description: session.activity.name,
         action: {
           label: "Open",

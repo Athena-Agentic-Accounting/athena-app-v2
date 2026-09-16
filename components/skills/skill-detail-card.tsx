@@ -66,7 +66,7 @@ export function SkillDetailCard({ skill, className }: SkillDetailCardProps) {
         <aside className="border-b border-border bg-muted/10 p-5 lg:border-r lg:border-b-0">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-5 text-xs sm:grid-cols-4 lg:grid-cols-1">
             <SkillMetadata label="Category" value={skill.category || "Uncategorised"} />
-            <SkillMetadata label="Ownership" value={core ? "Athena core" : "Firm-authored"} />
+            <SkillMetadata label="Ownership" value={core ? "LUCA core" : "Firm-authored"} />
             <SkillMetadata
               label="Editing"
               value={customisable ? "Can be customised" : core ? "Read only" : "Editable"}

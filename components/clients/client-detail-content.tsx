@@ -417,7 +417,7 @@ export function ClientDetailContent({
           // rather than a setup step nobody was told about.
           <div className="space-y-3">
             <p className="text-sm text-amber-700">
-              No Drive folder bound yet — Athena cannot index or search this
+              No Drive folder bound yet — LUCA cannot index or search this
               client&apos;s documents until one is set.
             </p>
             <DriveFolderBinding

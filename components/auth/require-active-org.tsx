@@ -55,8 +55,8 @@ export function RequireActiveOrg({ children }: { children: React.ReactNode }) {
           Workspace not provisioned
         </h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Your account isn&apos;t linked to an Athena workspace yet. Workspaces are
-          set up by the Athena team — contact your Athena representative to get
+          Your account isn&apos;t linked to a LUCA workspace yet. Workspaces are
+          set up by the LUCA team — contact your LUCA representative to get
           your firm onboarded.
         </p>
         <Button

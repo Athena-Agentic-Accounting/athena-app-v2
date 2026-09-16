@@ -46,13 +46,15 @@ export type AthenaUnsafeMetadata = {
 
 export type ClerkUnsafeMetadataShape = {
   athena?: AthenaUnsafeMetadata
+  luca?: AthenaUnsafeMetadata
 }
 
 export function getAthenaMetadata(
   unsafeMetadata: Record<string, unknown> | undefined | null,
 ): AthenaUnsafeMetadata | undefined {
   if (!unsafeMetadata || typeof unsafeMetadata !== "object") return undefined
-  const raw = (unsafeMetadata as ClerkUnsafeMetadataShape).athena
+  const shape = unsafeMetadata as ClerkUnsafeMetadataShape
+  const raw = shape.luca ?? shape.athena
   return raw && typeof raw === "object" ? raw : undefined
 }
 
@@ -65,20 +67,22 @@ export function buildAthenaMetadataUpdate(
       ? { ...existingUnsafe }
       : {}
   const prev = getAthenaMetadata(base) ?? {}
-  return {
-    ...base,
-    athena: {
-      ...prev,
-      ...next,
-      institution: {
-        ...(prev.institution ?? {}),
-        ...(next.institution ?? {}),
-        integrations: {
-          ...(prev.institution?.integrations ?? {}),
-          ...(next.institution?.integrations ?? {}),
-        },
+  const updated = {
+    ...prev,
+    ...next,
+    institution: {
+      ...(prev.institution ?? {}),
+      ...(next.institution ?? {}),
+      integrations: {
+        ...(prev.institution?.integrations ?? {}),
+        ...(next.institution?.integrations ?? {}),
       },
     },
+  }
+  return {
+    ...base,
+    athena: updated,
+    luca: updated,
   }
 }
 

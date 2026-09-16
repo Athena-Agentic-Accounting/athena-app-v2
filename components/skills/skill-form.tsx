@@ -248,7 +248,7 @@ export function SkillForm({
               <SectionIntroduction
                 eyebrow="Instructions"
                 title="Write the operating procedure"
-                description="Replace the starter guidance with the records, actions, controls, and approvals Athena should follow."
+                description="Replace the starter guidance with the records, actions, controls, and approvals LUCA should follow."
                 className="mb-0"
               />
               <span className="font-document shrink-0 text-[10px] tabular-nums text-muted-foreground">{contentStats.words} words / {contentStats.lines} lines</span>

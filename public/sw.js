@@ -5,11 +5,11 @@ self.addEventListener("push", (event) => {
     try {
       payload = event.data.json()
     } catch {
-      payload = { title: "Athena", body: event.data.text() }
+      payload = { title: "LUCA", body: event.data.text() }
     }
   }
 
-  const title = payload.title || "Athena"
+  const title = payload.title || "LUCA"
   const options = {
     body: payload.body,
     data: {

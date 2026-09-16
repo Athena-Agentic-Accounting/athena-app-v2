@@ -242,7 +242,7 @@ export function AuthFlow() {
       footer={
         <span>
           By continuing you agree to your institution&apos;s policies and
-          Athena&apos;s acceptable use.
+          LUCA&apos;s acceptable use.
         </span>
       }
     >
