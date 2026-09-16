@@ -121,6 +121,9 @@ export function SessionWorkspaceView({
   useEffect(() => {
     const newlyAddedActionable = outputs.find((output) => {
       if (seenOutputIdsRef.current.has(output.id)) return false
+      if (output.source === "artifact" && output.tab.kind === "plan_review") {
+        return true
+      }
       if (output.source !== "event") return false
       return (
         output.event.event.type === "approval_gate" ||

@@ -115,22 +115,31 @@ export function useActivitySession(
         setMessages(mapActivityMessages(sortMessagesByCreatedAt(rawMessages)));
         setStreamEvents(initialEvents);
 
-        // On initial load hydration, if an unresolved approval_gate or file_created exists, initialize activeOutputId to it
-        const unresolvedGate = [...initialEvents].reverse().find(
-          (event) =>
-            event.event.type === "approval_gate" &&
-            event.event.data.status !== "approved" &&
-            event.event.data.status !== "resolved" &&
-            event.event.data.status !== "rejected",
-        );
-        if (unresolvedGate) {
-          setActiveOutputId(`event:${unresolvedGate.id}`);
+        // On initial load hydration, prioritize plan review if plan is pending confirmation
+        if (
+          record?.status === "plan_pending" ||
+          record?.planStatus === "PENDING_CONFIRMATION" ||
+          (record?.plan && record.plan.length > 0 && record.planStatus !== "CONFIRMED")
+        ) {
+          setActiveOutputId("artifact:plan");
         } else {
-          const latestFile = [...initialEvents].reverse().find(
-            (event) => event.event.type === "file_created",
+          // If an unresolved approval_gate or file_created exists, initialize activeOutputId to it
+          const unresolvedGate = [...initialEvents].reverse().find(
+            (event) =>
+              event.event.type === "approval_gate" &&
+              event.event.data.status !== "approved" &&
+              event.event.data.status !== "resolved" &&
+              event.event.data.status !== "rejected",
           );
-          if (latestFile) {
-            setActiveOutputId(`event:${latestFile.id}`);
+          if (unresolvedGate) {
+            setActiveOutputId(`event:${unresolvedGate.id}`);
+          } else {
+            const latestFile = [...initialEvents].reverse().find(
+              (event) => event.event.type === "file_created",
+            );
+            if (latestFile) {
+              setActiveOutputId(`event:${latestFile.id}`);
+            }
           }
         }
       } catch (err) {
@@ -290,11 +299,12 @@ export function useActivitySession(
           const parsed = parseStreamEvent(raw, activityIdRef.current);
           if (!parsed) return;
 
-          // If the event is a gate or question, the agent has paused to wait for human input.
+          // If the event is a gate, question, or plan checklist, the agent has paused to wait for human input.
           if (
             parsed.event.type === "approval_gate" ||
             parsed.event.type === "attention_required" ||
-            parsed.event.type === "question_choice"
+            parsed.event.type === "question_choice" ||
+            (parsed.event.type === "checklist" && /plan/i.test(parsed.event.data.title ?? ""))
           ) {
             setIsAwaitingResponse(false);
           }
@@ -304,6 +314,11 @@ export function useActivitySession(
             parsed.event.type === "file_created"
           ) {
             setActiveOutputId(`event:${parsed.id}`);
+          } else if (
+            parsed.event.type === "checklist" &&
+            /plan/i.test(parsed.event.data.title ?? "")
+          ) {
+            setActiveOutputId("artifact:plan");
           }
 
           setStreamEvents((current) => mergeStreamEvents(current, parsed));
@@ -369,8 +384,8 @@ export function useActivitySession(
   }, [isAwaitingResponse, refreshMessages]);
 
   const artifact = useMemo(
-    () => buildArtifactFromStreamEvents(streamEvents),
-    [streamEvents],
+    () => buildArtifactFromStreamEvents(streamEvents, activity),
+    [streamEvents, activity],
   );
 
   const thoughts = useMemo(

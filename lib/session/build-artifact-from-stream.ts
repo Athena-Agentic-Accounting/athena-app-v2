@@ -1,8 +1,10 @@
+import type { ActivityRecord } from "@/lib/activities/types"
 import type { ActivityStreamEvent } from "@/lib/genui/types"
 import type { SessionArtifact } from "@/lib/session/types"
 
 export function buildArtifactFromStreamEvents(
   events: ActivityStreamEvent[],
+  activity?: ActivityRecord | null,
 ): SessionArtifact | undefined {
   // Plan checklist emitted by the AI server after plan submission
   const planChecklist = events.find(
@@ -24,7 +26,9 @@ export function buildArtifactFromStreamEvents(
         planNarrative !== undefined),
   )
 
-  if (!planChecklist && !planNarrative && !planTable) return undefined
+  const hasActivityPlan = Boolean(activity?.plan && activity.plan.length > 0)
+
+  if (!planChecklist && !planNarrative && !planTable && !hasActivityPlan) return undefined
 
   // Build markdown from checklist items if no narrative is present
   let markdown: string
@@ -35,6 +39,12 @@ export function buildArtifactFromStreamEvents(
     const title = planChecklist.event.data.title ?? "Proposed Plan"
     const lines = items.map((item) => `- ${item.label}`)
     markdown = `# ${title}\n\n${lines.join("\n")}`
+  } else if (hasActivityPlan && activity?.plan) {
+    const lines = activity.plan.map((step, i) => {
+      const lock = step.requiresApproval ? " 🔒" : ""
+      return `- Step ${i + 1}: ${step.task}${lock}${step.details ? ` — ${step.details}` : ""}`
+    })
+    markdown = `# Proposed Plan\n\n${lines.join("\n")}`
   } else {
     markdown = "# Plan\n\nReview the generated plan below."
   }
