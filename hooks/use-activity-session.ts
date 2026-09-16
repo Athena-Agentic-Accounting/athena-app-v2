@@ -74,6 +74,7 @@ export function useActivitySession(
   const [isSending, setIsSending] = useState(false);
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false);
   const [initialPromptSent, setInitialPromptSent] = useState(false);
+  const [activeOutputId, setActiveOutputId] = useState<string | undefined>();
 
   const activityIdRef = useRef(activityId);
   const assistantCountRef = useRef(0);
@@ -98,6 +99,7 @@ export function useActivitySession(
 
     async function load() {
       setIsLoading(true);
+      setActiveOutputId(undefined);
       try {
         const token = await getToken();
         if (cancelled) return;
@@ -108,9 +110,29 @@ export function useActivitySession(
         ]);
         if (cancelled) return;
 
+        const initialEvents = extractStreamEventsFromMessages(rawMessages, activityIdRef.current);
         setActivity(record);
         setMessages(mapActivityMessages(sortMessagesByCreatedAt(rawMessages)));
-        setStreamEvents(extractStreamEventsFromMessages(rawMessages, activityIdRef.current));
+        setStreamEvents(initialEvents);
+
+        // On initial load hydration, if an unresolved approval_gate or file_created exists, initialize activeOutputId to it
+        const unresolvedGate = [...initialEvents].reverse().find(
+          (event) =>
+            event.event.type === "approval_gate" &&
+            event.event.data.status !== "approved" &&
+            event.event.data.status !== "resolved" &&
+            event.event.data.status !== "rejected",
+        );
+        if (unresolvedGate) {
+          setActiveOutputId(`event:${unresolvedGate.id}`);
+        } else {
+          const latestFile = [...initialEvents].reverse().find(
+            (event) => event.event.type === "file_created",
+          );
+          if (latestFile) {
+            setActiveOutputId(`event:${latestFile.id}`);
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           toast.error("Could not load activity session", {
@@ -254,6 +276,7 @@ export function useActivitySession(
                     id: msgId,
                     role: data.role,
                     content: data.content,
+                    createdAt: record?.timestamp ?? new Date().toISOString(),
                   },
                 ];
               });
@@ -274,6 +297,13 @@ export function useActivitySession(
             parsed.event.type === "question_choice"
           ) {
             setIsAwaitingResponse(false);
+          }
+
+          if (
+            parsed.event.type === "approval_gate" ||
+            parsed.event.type === "file_created"
+          ) {
+            setActiveOutputId(`event:${parsed.id}`);
           }
 
           setStreamEvents((current) => mergeStreamEvents(current, parsed));
@@ -495,6 +525,8 @@ export function useActivitySession(
     isLoading,
     isSending,
     isAwaitingResponse,
+    activeOutputId,
+    setActiveOutputId,
     sendMessage,
     handlePlanDecision,
     handleApprovalDecision,

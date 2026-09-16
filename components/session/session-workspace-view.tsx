@@ -4,6 +4,8 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -37,6 +39,8 @@ type SessionWorkspaceViewProps = {
   activityStatus?: string
   onStatusChange?: () => void | Promise<void>
   onClose?: () => void
+  activeOutputId?: string
+  onActiveOutputChange?: (id: string) => void
   className?: string
 }
 
@@ -59,6 +63,8 @@ export function SessionWorkspaceView({
   activityStatus,
   onStatusChange,
   onClose,
+  activeOutputId: controlledActiveOutputId,
+  onActiveOutputChange,
   className,
 }: SessionWorkspaceViewProps) {
   const workspaceRef = useRef<HTMLDivElement>(null)
@@ -71,15 +77,98 @@ export function SessionWorkspaceView({
   const [desktopOutputOpen, setDesktopOutputOpen] = useState(true)
   const [outputWidth, setOutputWidth] = useState(62)
   const [isResizing, setIsResizing] = useState(false)
-  const activeOutputId = outputs.some((output) => output.id === selectedOutputId)
-    ? selectedOutputId
-    : outputs.at(-1)?.id
+
+  // Track seen output IDs to detect newly arriving items
+  const seenOutputIdsRef = useRef<Set<string>>(new Set(outputs.map((o) => o.id)))
+
+  const activeOutputId = useMemo(() => {
+    if (
+      controlledActiveOutputId &&
+      outputs.some((output) => output.id === controlledActiveOutputId)
+    ) {
+      return controlledActiveOutputId
+    }
+    if (
+      selectedOutputId &&
+      outputs.some((output) => output.id === selectedOutputId)
+    ) {
+      return selectedOutputId
+    }
+    return outputs.at(-1)?.id
+  }, [controlledActiveOutputId, selectedOutputId, outputs])
+
+  const handleSelectOutput = useCallback(
+    (outputId: string) => {
+      setSelectedOutputId(outputId)
+      onActiveOutputChange?.(outputId)
+    },
+    [onActiveOutputChange],
+  )
 
   function openOutput(outputId: string) {
-    setSelectedOutputId(outputId)
+    handleSelectOutput(outputId)
     setDesktopOutputOpen(true)
-    setMobileOutputOpen(true)
+    const isTyping =
+      typeof document !== "undefined" &&
+      (document.activeElement?.tagName === "TEXTAREA" ||
+        document.activeElement?.tagName === "INPUT")
+    if (!isTyping) {
+      setMobileOutputOpen(true)
+    }
   }
+
+  // Detect newly arriving approval_gate or file_created output items
+  useEffect(() => {
+    const newlyAddedActionable = outputs.find((output) => {
+      if (seenOutputIdsRef.current.has(output.id)) return false
+      if (output.source !== "event") return false
+      return (
+        output.event.event.type === "approval_gate" ||
+        output.event.event.type === "file_created"
+      )
+    })
+
+    for (const output of outputs) {
+      seenOutputIdsRef.current.add(output.id)
+    }
+
+    if (newlyAddedActionable) {
+      setSelectedOutputId(newlyAddedActionable.id)
+      onActiveOutputChange?.(newlyAddedActionable.id)
+      setDesktopOutputOpen(true)
+
+      // UX safeguard: only open mobile panel if user is not actively typing
+      const isTyping =
+        typeof document !== "undefined" &&
+        (document.activeElement?.tagName === "TEXTAREA" ||
+          document.activeElement?.tagName === "INPUT")
+      if (!isTyping) {
+        setMobileOutputOpen(true)
+      }
+    }
+  }, [outputs, onActiveOutputChange])
+
+  // If controlledActiveOutputId changes to an actionable item, ensure panel is open
+  useEffect(() => {
+    if (!controlledActiveOutputId) return
+    const targetOutput = outputs.find((o) => o.id === controlledActiveOutputId)
+    if (targetOutput && targetOutput.source === "event") {
+      if (
+        targetOutput.event.event.type === "approval_gate" ||
+        targetOutput.event.event.type === "file_created"
+      ) {
+        setDesktopOutputOpen(true)
+
+        const isTyping =
+          typeof document !== "undefined" &&
+          (document.activeElement?.tagName === "TEXTAREA" ||
+            document.activeElement?.tagName === "INPUT")
+        if (!isTyping) {
+          setMobileOutputOpen(true)
+        }
+      }
+    }
+  }, [controlledActiveOutputId, outputs])
 
   function clampOutputWidth(nextWidth: number) {
     const bounds = workspaceRef.current?.getBoundingClientRect()
@@ -161,7 +250,7 @@ export function SessionWorkspaceView({
             outputs={outputs}
             streamEvents={streamEvents}
             activeOutputId={activeOutputId}
-            onActiveOutputChange={setSelectedOutputId}
+            onActiveOutputChange={handleSelectOutput}
             onPlanDecision={onPlanDecision}
             onApprovalDecision={onApprovalDecision}
             onBackToConversation={() => setMobileOutputOpen(false)}

@@ -58,6 +58,8 @@ export function ActivitySessionView({
         streamStatus={session.streamStatus}
         isSending={session.isSending}
         isAwaitingResponse={session.isAwaitingResponse}
+        activeOutputId={session.activeOutputId}
+        onActiveOutputChange={session.setActiveOutputId}
         onSendMessage={session.sendMessage}
         onPlanDecision={session.handlePlanDecision}
         onApprovalDecision={session.handleApprovalDecision}

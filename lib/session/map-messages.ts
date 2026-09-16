@@ -4,6 +4,7 @@ export type SessionChatMessage = {
   id: string
   role: "user" | "assistant"
   content: string
+  createdAt?: string
 }
 
 export function mapActivityMessages(messages: ActivityMessage[]): SessionChatMessage[] {
@@ -19,6 +20,7 @@ export function mapActivityMessages(messages: ActivityMessage[]): SessionChatMes
       id: message.id ?? `message-${index}`,
       role: normalizeRole(message.role),
       content: (message.content ?? message.text ?? message.body ?? "").trim(),
+      createdAt: message.createdAt ?? message.created_at,
     }))
     .filter((message) => {
       if (!message.content) return false

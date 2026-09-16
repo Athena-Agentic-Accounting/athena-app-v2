@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  RiArrowRightSLine,
   RiCloseLine,
   RiEditLine,
   RiLayoutLeft2Line,
@@ -15,7 +14,6 @@ import { ChatPromptBar } from "@/components/chat/chat-prompt-bar"
 import { ChatTypingIndicator } from "@/components/chat/chat-typing-indicator"
 import { CardRenderer } from "@/components/genui/card-renderer"
 import { ActivityRunControls } from "@/components/session/activity-run-controls"
-import { SessionOutputIcon } from "@/components/session/session-output-icon"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Spinner } from "@/components/ui/spinner"
 import type { UseActivitySessionReturn } from "@/hooks/use-activity-session"
@@ -86,21 +84,36 @@ export function ChatSessionPanel({
     [streamEvents],
   )
 
+  const lastUserMessage = useMemo(() => {
+    return chatMessages.filter((m) => m.role === "user").at(-1)
+  }, [chatMessages])
+
+  const currentTurnProgressEvents = useMemo(() => {
+    if (!lastUserMessage?.createdAt) {
+      return streamEvents.filter((event) => event.event.type === "progress")
+    }
+    const userTime = new Date(lastUserMessage.createdAt).getTime()
+    if (Number.isNaN(userTime)) return []
+    return streamEvents.filter((event) => {
+      if (event.event.type !== "progress" || !event.timestamp) return false
+      const eventTime = new Date(event.timestamp).getTime()
+      return !Number.isNaN(eventTime) && eventTime >= userTime
+    })
+  }, [streamEvents, lastUserMessage])
+
   const latestProgress = useMemo(() => {
-    const progressEvents = streamEvents.filter((event) => event.event.type === "progress")
-    return progressEvents.at(-1)
-  }, [streamEvents])
+    return currentTurnProgressEvents.at(-1)
+  }, [currentTurnProgressEvents])
 
   const progressSteps = useMemo(
     () =>
-      streamEvents
-        .filter((event) => event.event.type === "progress")
+      currentTurnProgressEvents
         .map((event) =>
           event.event.type === "progress" ? event.event.data.stepDescription : "",
         )
         .filter((step, index, all) => Boolean(step) && all.indexOf(step) === index)
         .slice(-4),
-    [streamEvents],
+    [currentTurnProgressEvents],
   )
 
   const activeQuestionData =
@@ -208,27 +221,22 @@ export function ChatSessionPanel({
             <ChatMessageBubble key={message.id} message={message} />
           ))}
 
-          {outputs.length > 0 ? (
-            <section aria-labelledby="session-outputs-label">
-              <div className="mb-2 px-1">
-                <h3
-                  id="session-outputs-label"
-                  className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
-                >
-                  Prepared workpapers
-                </h3>
+          {outputs.length > 0 && onOpenOutputs ? (
+            <div className="my-1 flex items-center justify-between rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2.5 transition-colors">
+              <div className="flex items-center gap-2">
+                <RiLayoutLeft2Line className="size-4 text-muted-foreground" />
+                <span className="text-xs font-medium text-foreground">
+                  {outputs.length} prepared workpaper{outputs.length > 1 ? "s" : ""}
+                </span>
               </div>
-              <div className="border-y border-border/70">
-                {outputs.map((output) => (
-                  <OutputReceipt
-                    key={output.id}
-                    output={output}
-                    active={output.id === activeOutputId}
-                    onClick={() => onViewOutput?.(output.id)}
-                  />
-                ))}
-              </div>
-            </section>
+              <button
+                type="button"
+                onClick={onOpenOutputs}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                View workpapers →
+              </button>
+            </div>
           ) : null}
 
           {activeQuestion?.event.type === "question_choice" && activeQuestionData ? (
@@ -299,60 +307,6 @@ export function ChatSessionPanel({
         ) : null}
       </footer>
     </aside>
-  )
-}
-
-function OutputReceipt({
-  output,
-  active,
-  onClick,
-}: {
-  output: SessionOutputItem
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "group flex min-h-14 w-full items-center gap-3 border-b border-border/70 px-2 py-3 text-left transition-[background-color,color,box-shadow] duration-150 last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:scale-[0.96]",
-        active
-          ? "bg-primary/[0.04] text-foreground shadow-[inset_2px_0_0_var(--primary)]"
-          : "text-foreground hover:bg-muted/40",
-      )}
-    >
-      <SessionOutputIcon
-        output={output}
-        className={cn(
-          "size-4 shrink-0 text-muted-foreground",
-          active && "text-primary",
-        )}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="line-clamp-2 text-xs font-medium leading-4">
-          {output.title}
-        </span>
-        <span className="mt-0.5 flex items-center gap-1.5 text-[10px] leading-3 text-muted-foreground">
-          <span>{output.category}</span>
-          <span aria-hidden="true">/</span>
-          <span>
-            {output.status === "ready"
-              ? "Ready"
-              : output.status === "review"
-                ? "Requires review"
-                : "Needs attention"}
-          </span>
-        </span>
-      </span>
-      <RiArrowRightSLine
-        className={cn(
-          "size-4 shrink-0 text-muted-foreground transition-[transform,color] duration-150 group-hover:translate-x-0.5 group-hover:text-foreground",
-          active && "text-primary",
-        )}
-      />
-    </button>
   )
 }
 
