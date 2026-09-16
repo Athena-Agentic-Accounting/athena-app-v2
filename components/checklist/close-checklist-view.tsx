@@ -245,7 +245,7 @@ export function CloseChecklistView() {
             showEmptyState={
               viewState === "post-welcome" && localTasks.length === 0
             }
-            emptyDescription="Try asking Athena something, or create your first activity."
+            emptyDescription="Try asking LUCA something, or create your first activity."
             onWelcomeCheckClick={() => setWelcomeSheetOpen(true)}
             onAddTask={handleNewTask}
             showClientTag={showClientTag}

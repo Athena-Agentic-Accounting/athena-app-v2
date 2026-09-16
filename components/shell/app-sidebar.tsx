@@ -49,7 +49,7 @@ import {
 import { getVisibleNavItems, isNavItemActive } from "@/lib/navigation/sidebar-nav"
 import { cn } from "@/lib/utils"
 
-function AthenaLogo() {
+function LucaLogo() {
   return (
     <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
       <span className="block size-3 rounded-br-[0.7rem] rounded-tl-[0.7rem] bg-primary-foreground" />
@@ -128,7 +128,7 @@ export function AppSidebar() {
     >
       <SidebarHeader className="gap-2.5 p-2.5 group-data-[collapsible=icon]:p-2">
         <div className="flex items-center justify-between px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-          <AthenaLogo />
+          <LucaLogo />
           <SidebarTrigger className="size-6 text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:hidden" />
         </div>
         <ClientSelector />

@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { RiHomeLine } from "@remixicon/react"
+import { RiArrowRightLine, RiHomeLine } from "@remixicon/react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
 import { toast } from "sonner"
@@ -10,12 +10,14 @@ import { ChatPromptBar, type PromptMode } from "@/components/chat/chat-prompt-ba
 import { ChatMessageBubble } from "@/components/chat/chat-message-bubble"
 import { ChatTypingIndicator } from "@/components/chat/chat-typing-indicator"
 import { HomeAttentionList } from "@/components/home/home-attention-list"
+import { HomeRecentWorkspaces } from "@/components/home/home-recent-workspaces"
 import { HomeStatusCards } from "@/components/home/home-status-cards"
 import { useActivityBoard } from "@/components/providers/activity-board-provider"
 import { useClient } from "@/components/providers/client-provider"
 import { PageHeader } from "@/components/shell/page-header"
+import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { submitActivityPrompt } from "@/lib/api/activities"
+import { createActivity, submitActivityPrompt } from "@/lib/api/activities"
 import type { UploadedAttachment } from "@/lib/api/uploads"
 import type { SessionChatMessage } from "@/lib/session/map-messages"
 import type { ChecklistTask, TaskStatus } from "@/lib/checklist/mock-tasks"
@@ -135,6 +137,35 @@ export function HomeView() {
     }
   }
 
+  const [creatingWorkspace, setCreatingWorkspace] = useState(false)
+
+  async function handleOpenConversationWorkspace() {
+    const userPrompt = messages.find((m) => m.role === "user")?.content
+    if (!userPrompt) return
+    const clientId = resolvePromptClientId(selectedClientId, clients)
+    if (!clientId) return
+
+    setCreatingWorkspace(true)
+    try {
+      const token = await getToken()
+      const res = await createActivity(token, {
+        clientId,
+        name: userPrompt.slice(0, 80),
+        type: "AD_HOC",
+      })
+      const actId = res.kind === "activity" ? res.activity.id : undefined
+      if (actId) {
+        router.push(`/activities/${actId}?prompt=${encodeURIComponent(userPrompt)}`)
+      }
+    } catch (err) {
+      toast.error("Could not open workspace", {
+        description: err instanceof Error ? err.message : "Something went wrong.",
+      })
+    } finally {
+      setCreatingWorkspace(false)
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <PageHeader
@@ -161,6 +192,26 @@ export function HomeView() {
                   <ChatMessageBubble key={message.id} message={message} />
                 ))}
                 {submittingPrompt ? <ChatTypingIndicator /> : null}
+
+                <div className="flex justify-end border-t border-border/60 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs font-medium"
+                    disabled={creatingWorkspace || submittingPrompt}
+                    onClick={() => void handleOpenConversationWorkspace()}
+                  >
+                    {creatingWorkspace ? (
+                      <Spinner className="size-3.5" />
+                    ) : (
+                      <>
+                        <span>Open in workspace with workpapers</span>
+                        <RiArrowRightLine className="size-3.5" />
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             ) : null}
 
@@ -181,13 +232,18 @@ export function HomeView() {
           </section>
 
           <section className="flex flex-col gap-4">
-            <SectionHeader label="Activity" />
-            <HomeStatusCards counts={statusCounts} isLoading={isLoading} />
+            <SectionHeader label="Active workspaces" />
+            <HomeRecentWorkspaces />
           </section>
 
           <section className="flex flex-col gap-4">
             <SectionHeader label="Needs your attention" />
             <HomeAttentionList />
+          </section>
+
+          <section className="flex flex-col gap-4">
+            <SectionHeader label="Activity overview" />
+            <HomeStatusCards counts={statusCounts} isLoading={isLoading} />
           </section>
         </div>
       </div>

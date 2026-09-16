@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 
 export function BoardEmptyState({
   title = "Nothing here yet",
-  description = "Try asking Athena something, or create your first activity.",
+  description = "Try asking LUCA something, or create your first activity.",
   actionLabel = "Create a new task",
   onAction,
 }: {

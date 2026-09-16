@@ -9,8 +9,8 @@ import { geist, stackSansHeadline } from "@/lib/fonts"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Athena",
-  description: "Athena — Agentic Accounting",
+  title: "LUCA",
+  description: "LUCA — Agentic Accounting",
 }
 
 export default function RootLayout({

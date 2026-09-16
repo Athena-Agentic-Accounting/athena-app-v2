@@ -468,7 +468,7 @@ export function DriveFolderBinding({
         </p>
       ) : (
         <p className="text-xs text-amber-700">
-          No folder bound yet — Athena cannot index or search this client&apos;s
+          No folder bound yet — LUCA cannot index or search this client&apos;s
           documents until one is set.
         </p>
       )}

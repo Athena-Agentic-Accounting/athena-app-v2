@@ -106,7 +106,7 @@ export function ChatPromptBar({
         onKeyDown={handleKeyDown}
         rows={2}
         placeholder={placeholder}
-        aria-label="Message Athena"
+        aria-label="Message LUCA"
         className="min-h-[56px] w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
       />
 

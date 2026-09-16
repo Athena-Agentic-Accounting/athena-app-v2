@@ -14,9 +14,9 @@ export function getIntegrationLabel(provider: IntegrationProvider): string {
 export function getIntegrationDescription(provider: IntegrationProvider): string {
   switch (provider) {
     case "quickbooks":
-      return "Connect your books so Athena can read transactions, accounts, and your chart of accounts."
+      return "Connect your books so LUCA can read transactions, accounts, and your chart of accounts."
     case "google_drive":
-      return "Optional — attach supporting documents and let Athena reference files in context."
+      return "Optional — attach supporting documents and let LUCA reference files in context."
   }
 }
 

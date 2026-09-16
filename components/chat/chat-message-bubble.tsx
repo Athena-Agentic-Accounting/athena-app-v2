@@ -14,7 +14,7 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
     return (
       <article data-chat-interface className="w-full px-1">
         <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          Athena
+          LUCA
         </p>
         <div className="text-sm leading-relaxed text-foreground">
           <MarkdownContent markdown={message.content} />

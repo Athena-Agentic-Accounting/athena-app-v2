@@ -45,7 +45,7 @@ export function ChatTypingIndicator({
       className={cn("flex w-full justify-start py-1.5", className)}
       role="status"
       aria-live="polite"
-      aria-label={`Athena is working: ${activeLabel}`}
+      aria-label={`LUCA is working: ${activeLabel}`}
     >
       <div className="min-w-0 max-w-[34rem]" aria-hidden="true">
         <div className="flex h-5 items-center gap-2">

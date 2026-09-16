@@ -154,14 +154,16 @@ function getVisibleOutputEvents(events: ActivityStreamEvent[]): ActivityStreamEv
 
     if (event.event.type === "narrative") {
       const title = (event.event.data.title || "").trim().toLowerCase()
-      if (title) {
-        const lastNarrativeIndex = all.findLastIndex((candidate) => {
-          if (candidate.event.type !== "narrative") return false
-          const candidateTitle = (candidate.event.data.title || "").trim().toLowerCase()
-          return candidateTitle === title
-        })
-        return index === lastNarrativeIndex
+      // Exclude generic status updates, "update", "analysis", or untyped notes from workpapers
+      if (!title || title === "update" || title === "analysis" || title === "status update") {
+        return false
       }
+      const lastNarrativeIndex = all.findLastIndex((candidate) => {
+        if (candidate.event.type !== "narrative") return false
+        const candidateTitle = (candidate.event.data.title || "").trim().toLowerCase()
+        return candidateTitle === title
+      })
+      return index === lastNarrativeIndex
     }
 
     if (event.event.type === "attention_required") {

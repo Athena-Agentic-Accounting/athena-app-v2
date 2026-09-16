@@ -65,7 +65,7 @@ export function getOnboardingSteps(tenantType?: TenantType): OnboardingStep[] {
     {
       id: "add-first-client",
       title: "Add your first client",
-      description: "Every screen in Athena scopes to a client — start with one.",
+      description: "Every screen in LUCA scopes to a client — start with one.",
     },
     {
       id: "connect-quickbooks",

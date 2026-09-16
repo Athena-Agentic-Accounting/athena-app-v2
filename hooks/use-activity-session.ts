@@ -456,7 +456,7 @@ export function useActivitySession(
           );
         }
 
-        toast.success("Plan rejected — Athena will regenerate it");
+        toast.success("Plan rejected — LUCA will regenerate it");
         setIsAwaitingResponse(true);
         return;
       }

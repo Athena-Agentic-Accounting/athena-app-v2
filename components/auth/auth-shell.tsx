@@ -17,7 +17,7 @@ export function AuthLogo() {
       >
         <span className="block size-3.5 rounded-br-[0.7rem] rounded-tl-[0.7rem] bg-primary-foreground" />
       </span>
-      <span className="text-sm font-normal text-foreground">Athena</span>
+      <span className="text-sm font-normal text-foreground">LUCA</span>
     </Link>
   )
 }
