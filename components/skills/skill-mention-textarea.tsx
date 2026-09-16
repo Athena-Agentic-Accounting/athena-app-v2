@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -68,9 +67,12 @@ export function SkillMentionTextarea({
     [attachedSkillIds, skills],
   )
 
-  useEffect(() => {
+  // A new query starts the highlight back at the first suggestion.
+  const [highlightQuery, setHighlightQuery] = useState(mention?.query)
+  if (highlightQuery !== mention?.query) {
+    setHighlightQuery(mention?.query)
     setActiveIndex(0)
-  }, [mention?.query])
+  }
 
   const selectSkill = useCallback(
     (skill: ApiSkill) => {

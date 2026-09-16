@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
-import { RiCalendarLine, RiCheckLine, RiCloseLine, RiLoopLeftLine, RiPriceTag3Line } from "@remixicon/react"
+import { RiCalendarLine, RiCheckLine, RiLoopLeftLine, RiPriceTag3Line } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -65,17 +65,23 @@ export function EditScheduleDialog({
   const [timezone, setTimezone] = useState("UTC")
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    if (!open || !schedule) return
-
-    const split = splitStartDateTime(getScheduleStartDate(schedule))
-    setName(schedule.name)
-    setActivityType(getActivityCategoryMeta(schedule.type)?.value ?? DEFAULT_ACTIVITY_CATEGORY)
-    setRecurrence((schedule.recurrence as ActivityRecurrence) || "none")
-    setStartDate(split.date)
-    setStartTime(split.time)
-    setTimezone(schedule.timezone || "UTC")
-  }, [open, schedule])
+  // Load the schedule into the form whenever the dialog opens (or its schedule changes).
+  const [formSource, setFormSource] = useState<{ open: boolean; schedule: typeof schedule }>({
+    open: false,
+    schedule: null,
+  })
+  if (formSource.open !== open || formSource.schedule !== schedule) {
+    setFormSource({ open, schedule })
+    if (open && schedule) {
+      const split = splitStartDateTime(getScheduleStartDate(schedule))
+      setName(schedule.name)
+      setActivityType(getActivityCategoryMeta(schedule.type)?.value ?? DEFAULT_ACTIVITY_CATEGORY)
+      setRecurrence((schedule.recurrence as ActivityRecurrence) || "none")
+      setStartDate(split.date)
+      setStartTime(split.time)
+      setTimezone(schedule.timezone || "UTC")
+    }
+  }
 
   const categoryLabel = formatActivityCategory(activityType)
   const recurrenceLabel =

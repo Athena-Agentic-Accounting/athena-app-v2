@@ -15,11 +15,11 @@ import { getCardTitle } from "@/lib/genui/card-meta"
 import { CardShell } from "@/components/genui/card-shell"
 import { Button } from "@/components/ui/button"
 
-function getFileIcon(mimeType?: string) {
-  if (!mimeType) return RiFileTextLine
-  if (mimeType.includes("sheet") || mimeType.includes("excel")) return RiFileExcelLine
-  if (mimeType.includes("word") || mimeType.includes("document")) return RiFileTextLine
-  return RiFileTextLine
+function FileTypeIcon({ mimeType, className }: { mimeType?: string; className?: string }) {
+  if (mimeType && (mimeType.includes("sheet") || mimeType.includes("excel"))) {
+    return <RiFileExcelLine className={className} />
+  }
+  return <RiFileTextLine className={className} />
 }
 
 function getEmbedPreviewUrl(fileUrl?: string): string | null {
@@ -53,7 +53,6 @@ function getEmbedPreviewUrl(fileUrl?: string): string | null {
 
 export function FileCreatedCard({ data }: { data: FileCreatedCardData }) {
   const [showPreview, setShowPreview] = useState(true)
-  const FileIcon = getFileIcon(data.mimeType)
   const previewUrl = getEmbedPreviewUrl(data.fileUrl)
   const isDrive =
     data.fileUrl?.includes("drive.google.com") ||
@@ -66,7 +65,7 @@ export function FileCreatedCard({ data }: { data: FileCreatedCardData }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+              <FileTypeIcon mimeType={data.mimeType} className="size-4 shrink-0 text-muted-foreground" />
               <p className="truncate text-sm font-medium text-foreground">{data.fileName}</p>
             </div>
             {data.location ? (

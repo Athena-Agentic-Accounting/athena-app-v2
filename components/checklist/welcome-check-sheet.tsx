@@ -55,12 +55,18 @@ export function WelcomeCheckSheet({
     getAthenaMetadata(user?.unsafeMetadata as Record<string, unknown> | undefined),
   )
 
-  useEffect(() => {
+  // Closing the sheet discards the preview so the next open starts fresh.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (wasOpen !== open) {
+    setWasOpen(open)
     if (!open) {
       setCoa({ phase: "loading" })
       setVisibleRows(0)
-      return
     }
+  }
+
+  useEffect(() => {
+    if (!open) return
 
     let cancelled = false
 

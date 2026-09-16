@@ -5,7 +5,6 @@ import {
   type KeyboardEvent,
   type PointerEvent,
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -16,7 +15,7 @@ import { ChatSessionPanel } from "@/components/session/chat-session-panel"
 import type { UseActivitySessionReturn } from "@/hooks/use-activity-session"
 import type { ActivityStreamEvent, PlanReviewDecision } from "@/lib/genui/types"
 import type { SessionChatMessage } from "@/lib/session/map-messages"
-import { buildSessionOutputItems } from "@/lib/session/output-items"
+import { buildSessionOutputItems, type SessionOutputItem } from "@/lib/session/output-items"
 import type { SessionArtifact, SessionThought, SessionUserMessage } from "@/lib/session/types"
 import { cn } from "@/lib/utils"
 
@@ -78,9 +77,6 @@ export function SessionWorkspaceView({
   const [outputWidth, setOutputWidth] = useState(62)
   const [isResizing, setIsResizing] = useState(false)
 
-  // Track seen output IDs to detect newly arriving items
-  const seenOutputIdsRef = useRef<Set<string>>(new Set(outputs.map((o) => o.id)))
-
   const activeOutputId = useMemo(() => {
     if (
       controlledActiveOutputId &&
@@ -105,73 +101,22 @@ export function SessionWorkspaceView({
     [onActiveOutputChange],
   )
 
-  function openOutput(outputId: string) {
-    handleSelectOutput(outputId)
+  // The session hook points activeOutputId at approval gates, new files and the
+  // plan review as they arrive; bring the output panel into view when it does
+  // (on mobile, only if that won't pull the user out of the composer).
+  const controlledTarget = controlledActiveOutputId
+    ? outputs.find((output) => output.id === controlledActiveOutputId)
+    : undefined
+  const [revealedOutputId, setRevealedOutputId] = useState<string>()
+  if (
+    controlledTarget &&
+    controlledTarget.id !== revealedOutputId &&
+    isActionableOutput(controlledTarget)
+  ) {
+    setRevealedOutputId(controlledTarget.id)
     setDesktopOutputOpen(true)
-    const isTyping =
-      typeof document !== "undefined" &&
-      (document.activeElement?.tagName === "TEXTAREA" ||
-        document.activeElement?.tagName === "INPUT")
-    if (!isTyping) {
-      setMobileOutputOpen(true)
-    }
+    if (!isUserTyping()) setMobileOutputOpen(true)
   }
-
-  // Detect newly arriving approval_gate or file_created output items
-  useEffect(() => {
-    const newlyAddedActionable = outputs.find((output) => {
-      if (seenOutputIdsRef.current.has(output.id)) return false
-      if (output.source === "artifact" && output.tab.kind === "plan_review") {
-        return true
-      }
-      if (output.source !== "event") return false
-      return (
-        output.event.event.type === "approval_gate" ||
-        output.event.event.type === "file_created"
-      )
-    })
-
-    for (const output of outputs) {
-      seenOutputIdsRef.current.add(output.id)
-    }
-
-    if (newlyAddedActionable) {
-      setSelectedOutputId(newlyAddedActionable.id)
-      onActiveOutputChange?.(newlyAddedActionable.id)
-      setDesktopOutputOpen(true)
-
-      // UX safeguard: only open mobile panel if user is not actively typing
-      const isTyping =
-        typeof document !== "undefined" &&
-        (document.activeElement?.tagName === "TEXTAREA" ||
-          document.activeElement?.tagName === "INPUT")
-      if (!isTyping) {
-        setMobileOutputOpen(true)
-      }
-    }
-  }, [outputs, onActiveOutputChange])
-
-  // If controlledActiveOutputId changes to an actionable item, ensure panel is open
-  useEffect(() => {
-    if (!controlledActiveOutputId) return
-    const targetOutput = outputs.find((o) => o.id === controlledActiveOutputId)
-    if (targetOutput && targetOutput.source === "event") {
-      if (
-        targetOutput.event.event.type === "approval_gate" ||
-        targetOutput.event.event.type === "file_created"
-      ) {
-        setDesktopOutputOpen(true)
-
-        const isTyping =
-          typeof document !== "undefined" &&
-          (document.activeElement?.tagName === "TEXTAREA" ||
-            document.activeElement?.tagName === "INPUT")
-        if (!isTyping) {
-          setMobileOutputOpen(true)
-        }
-      }
-    }
-  }, [controlledActiveOutputId, outputs])
 
   function clampOutputWidth(nextWidth: number) {
     const bounds = workspaceRef.current?.getBoundingClientRect()
@@ -292,12 +237,10 @@ export function SessionWorkspaceView({
         streamEvents={streamEvents}
         chatMessages={chatMessages}
         outputs={outputs}
-        activeOutputId={activeOutputId}
         streamStatus={streamStatus}
         isSending={isSending}
         isAwaitingResponse={isAwaitingResponse}
         onSendMessage={onSendMessage}
-        onViewOutput={openOutput}
         onOpenOutputs={
           outputs.length > 0 && !desktopOutputOpen
             ? () => setDesktopOutputOpen(true)
@@ -317,4 +260,15 @@ export function SessionWorkspaceView({
       />
     </div>
   )
+}
+
+function isUserTyping(): boolean {
+  if (typeof document === "undefined") return false
+  const tag = document.activeElement?.tagName
+  return tag === "TEXTAREA" || tag === "INPUT"
+}
+
+function isActionableOutput(output: SessionOutputItem): boolean {
+  if (output.source === "artifact") return output.tab.kind === "plan_review"
+  return output.event.event.type === "approval_gate" || output.event.event.type === "file_created"
 }

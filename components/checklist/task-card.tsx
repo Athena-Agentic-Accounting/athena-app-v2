@@ -1,6 +1,6 @@
 "use client"
 
-import type { DraggableAttributes } from "@dnd-kit/core"
+import type { DraggableAttributes, DraggableSyntheticListeners } from "@dnd-kit/core"
 import {
   Building2,
   CalendarIcon,
@@ -35,7 +35,7 @@ type TaskCardProps = {
   showClientTag?: boolean
   dragHandleProps?: {
     attributes: DraggableAttributes
-    listeners: Record<string, Function> | undefined
+    listeners: DraggableSyntheticListeners
   }
 }
 

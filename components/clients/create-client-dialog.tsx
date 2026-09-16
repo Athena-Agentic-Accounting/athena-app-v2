@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { toast } from "sonner"
 
@@ -33,10 +33,12 @@ export function CreateClientDialog({
   const [name, setName] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    if (!open) return
-    setName("")
-  }, [open])
+  // Start from a clean form each time the dialog opens.
+  const [wasOpen, setWasOpen] = useState(false)
+  if (wasOpen !== open) {
+    setWasOpen(open)
+    if (open) setName("")
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()

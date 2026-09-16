@@ -157,9 +157,12 @@ export function SchedulesBigCalendar({
 }: SchedulesBigCalendarProps) {
   const [currentStartDate, setCurrentStartDate] = React.useState(defaultStartDate)
 
-  React.useEffect(() => {
+  // A new default (e.g. "Today" in the parent) resets the visible range.
+  const [appliedDefault, setAppliedDefault] = React.useState(defaultStartDate)
+  if (appliedDefault.getTime() !== defaultStartDate.getTime()) {
+    setAppliedDefault(defaultStartDate)
     setCurrentStartDate(defaultStartDate)
-  }, [defaultStartDate])
+  }
 
   const showingDays = Array.from({ length: totalShowingDays }, (_, i) =>
     addDays(currentStartDate, i),

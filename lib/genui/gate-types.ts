@@ -32,6 +32,44 @@ type QuickBooksJournalLine = {
   }
 }
 
+type RawJournalLine = {
+  account?: unknown
+  debit?: unknown
+  credit?: unknown
+  description?: unknown
+}
+
+type RawJournalEntry = {
+  date?: unknown
+  memo?: unknown
+  title?: unknown
+  reversing?: unknown
+  reversalDate?: unknown
+  lines?: unknown
+}
+
+function toAmount(value: unknown): number | undefined {
+  if (typeof value === "number") return value
+  return value ? Number(value) : undefined
+}
+
+function toJournalEntry(entry: RawJournalEntry): JournalEntryReviewData {
+  const lines = Array.isArray(entry.lines) ? (entry.lines as RawJournalLine[]) : []
+  return {
+    date: typeof entry.date === "string" ? entry.date : "",
+    memo: typeof entry.memo === "string" ? entry.memo : undefined,
+    title: typeof entry.title === "string" ? entry.title : undefined,
+    reversing: typeof entry.reversing === "boolean" ? entry.reversing : undefined,
+    reversalDate: typeof entry.reversalDate === "string" ? entry.reversalDate : undefined,
+    lines: lines.map((line) => ({
+      account: String(line.account ?? "Unknown Account"),
+      debit: toAmount(line.debit),
+      credit: toAmount(line.credit),
+      description: typeof line.description === "string" ? line.description : undefined,
+    })),
+  }
+}
+
 export function extractJournalEntriesFromPayload(
   payload: Record<string, unknown>,
 ): JournalEntryReviewData[] {
@@ -39,40 +77,19 @@ export function extractJournalEntriesFromPayload(
 
   // Check if payload has an array of entries
   if (Array.isArray(payload.entries) && payload.entries.length > 0) {
-    return payload.entries
-      .filter((e) => e && typeof e === "object" && Array.isArray((e as any).lines))
-      .map((e: any) => ({
-        date: typeof e.date === "string" ? e.date : "",
-        memo: typeof e.memo === "string" ? e.memo : undefined,
-        title: typeof e.title === "string" ? e.title : undefined,
-        reversing: typeof e.reversing === "boolean" ? e.reversing : undefined,
-        reversalDate: typeof e.reversalDate === "string" ? e.reversalDate : undefined,
-        lines: (e.lines as any[]).map((l: any) => ({
-          account: String(l.account ?? "Unknown Account"),
-          debit: typeof l.debit === "number" ? l.debit : (l.debit ? Number(l.debit) : undefined),
-          credit: typeof l.credit === "number" ? l.credit : (l.credit ? Number(l.credit) : undefined),
-          description: typeof l.description === "string" ? l.description : undefined,
-        })),
-      }))
+    return (payload.entries as unknown[])
+      .filter(
+        (entry): entry is RawJournalEntry =>
+          Boolean(entry) &&
+          typeof entry === "object" &&
+          Array.isArray((entry as RawJournalEntry).lines),
+      )
+      .map(toJournalEntry)
   }
 
   // Check if payload itself is a single journal entry with lines
   if (Array.isArray(payload.lines) && payload.lines.length > 0) {
-    return [
-      {
-        date: typeof payload.date === "string" ? payload.date : "",
-        memo: typeof payload.memo === "string" ? payload.memo : undefined,
-        title: typeof payload.title === "string" ? payload.title : undefined,
-        reversing: typeof payload.reversing === "boolean" ? payload.reversing : undefined,
-        reversalDate: typeof payload.reversalDate === "string" ? payload.reversalDate : undefined,
-        lines: (payload.lines as any[]).map((l: any) => ({
-          account: String(l.account ?? "Unknown Account"),
-          debit: typeof l.debit === "number" ? l.debit : (l.debit ? Number(l.debit) : undefined),
-          credit: typeof l.credit === "number" ? l.credit : (l.credit ? Number(l.credit) : undefined),
-          description: typeof l.description === "string" ? l.description : undefined,
-        })),
-      },
-    ]
+    return [toJournalEntry(payload as RawJournalEntry)]
   }
 
   return []

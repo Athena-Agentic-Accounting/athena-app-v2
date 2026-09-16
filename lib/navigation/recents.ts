@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useSyncExternalStore } from "react"
 
 const STORAGE_KEY = "athena.recents.v1"
 const UPDATE_EVENT = "athena:recents"
@@ -58,22 +58,38 @@ export function trackRecent(item: Omit<RecentItem, "visitedAt">): void {
   }
 }
 
+const NO_RECENTS: RecentItem[] = []
+
+function subscribeToRecents(onChange: () => void) {
+  window.addEventListener(UPDATE_EVENT, onChange)
+  window.addEventListener("storage", onChange)
+  return () => {
+    window.removeEventListener(UPDATE_EVENT, onChange)
+    window.removeEventListener("storage", onChange)
+  }
+}
+
+// useSyncExternalStore needs a stable snapshot: re-parse only when the stored
+// string changes.
+let cachedRaw: string | null = null
+let cachedItems: RecentItem[] = NO_RECENTS
+
+function getRecentsSnapshot(): RecentItem[] {
+  let raw: string | null = null
+  try {
+    raw = window.localStorage.getItem(STORAGE_KEY)
+  } catch {
+    return NO_RECENTS
+  }
+  if (raw !== cachedRaw) {
+    cachedRaw = raw
+    cachedItems = readRecents()
+  }
+  return cachedItems
+}
+
 export function useRecentItems(): RecentItem[] {
-  const [items, setItems] = useState<RecentItem[]>([])
-
-  const refresh = useCallback(() => setItems(readRecents()), [])
-
-  useEffect(() => {
-    refresh()
-    window.addEventListener(UPDATE_EVENT, refresh)
-    window.addEventListener("storage", refresh)
-    return () => {
-      window.removeEventListener(UPDATE_EVENT, refresh)
-      window.removeEventListener("storage", refresh)
-    }
-  }, [refresh])
-
-  return items
+  return useSyncExternalStore(subscribeToRecents, getRecentsSnapshot, () => NO_RECENTS)
 }
 
 export function formatRelativeTime(timestamp: number): string {

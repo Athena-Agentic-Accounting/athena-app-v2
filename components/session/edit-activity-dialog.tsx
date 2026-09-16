@@ -38,15 +38,25 @@ export function EditActivityDialog({
 
   const isLocked = Boolean(activity?.auditLockedAt)
 
+  // Load the activity into the form whenever the dialog opens (or its activity changes).
+  const [formSource, setFormSource] = useState<{ open: boolean; activity: typeof activity }>({
+    open: false,
+    activity: null,
+  })
+  if (formSource.open !== open || formSource.activity !== activity) {
+    setFormSource({ open, activity })
+    if (open) {
+      setName(activity?.name ?? "")
+      setSkillQuery("")
+      setAttachedSkillIds(activity?.skillIds ?? [])
+      setSkillsLoading(true)
+    }
+  }
+
   useEffect(() => {
     if (!open) return
 
-    setName(activity?.name ?? "")
-    setSkillQuery("")
-    setAttachedSkillIds(activity?.skillIds ?? [])
-
     let cancelled = false
-    setSkillsLoading(true)
 
     void (async () => {
       try {

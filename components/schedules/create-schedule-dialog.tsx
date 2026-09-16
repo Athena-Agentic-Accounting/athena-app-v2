@@ -34,7 +34,6 @@ import {
   combineStartDateTime,
   getDefaultTimezone,
 } from "@/lib/schedules/datetime"
-import { cn } from "@/lib/utils"
 
 type CreateScheduleDialogProps = {
   open: boolean
@@ -66,21 +65,26 @@ export function CreateScheduleDialog({
   const [timezone, setTimezone] = useState(getDefaultTimezone)
   const [submitting, setSubmitting] = useState(false)
 
+  // Start from a clean form each time the dialog opens.
+  const [wasOpen, setWasOpen] = useState(false)
+  if (wasOpen !== open) {
+    setWasOpen(open)
+    if (open) {
+      setName("")
+      setClientId(selectedClientId !== ALL_CLIENTS_ID ? selectedClientId : "")
+      setActivityType(DEFAULT_ACTIVITY_CATEGORY)
+      setRecurrence("monthly")
+      setStartDate("")
+      setStartTime("09:00")
+      setTimezone(getDefaultTimezone())
+    }
+  }
+
   useEffect(() => {
     if (!open) return
-
-    const isClientScoped = selectedClientId !== ALL_CLIENTS_ID
-    setName("")
-    setClientId(isClientScoped ? selectedClientId : "")
-    setActivityType(DEFAULT_ACTIVITY_CATEGORY)
-    setRecurrence("monthly")
-    setStartDate("")
-    setStartTime("09:00")
-    setTimezone(getDefaultTimezone())
-
     const timer = window.setTimeout(() => titleRef.current?.focus(), 50)
     return () => window.clearTimeout(timer)
-  }, [open, selectedClientId])
+  }, [open])
 
   if (!open) return null
 

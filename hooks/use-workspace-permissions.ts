@@ -16,16 +16,16 @@ export function useWorkspacePermissions(clientDetail?: ApiClientDetail | null) {
   // authoring UI where every save 403s.
   const canManageSkills = orgRole === "org:admin" || orgRole === "org:accountant"
 
+  const members = clientDetail?.members
+  const userEmail = user?.primaryEmailAddress?.emailAddress
   const currentClientRole = useMemo((): ClientMemberRole | null => {
-    if (!clientDetail?.members?.length || !user?.primaryEmailAddress?.emailAddress) {
-      return null
-    }
+    if (!members?.length || !userEmail) return null
 
-    const email = user.primaryEmailAddress.emailAddress.toLowerCase()
-    const member = clientDetail.members.find((entry) => getMemberEmail(entry) === email)
+    const email = userEmail.toLowerCase()
+    const member = members.find((entry) => getMemberEmail(entry) === email)
 
     return member ? fromApiMemberRole(member.role) : null
-  }, [clientDetail?.members, user?.primaryEmailAddress?.emailAddress])
+  }, [members, userEmail])
 
   const canAddClient = isWorkspaceAdmin
 

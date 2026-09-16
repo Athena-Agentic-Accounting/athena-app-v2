@@ -119,27 +119,21 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     return fallbackConfig
   }, [apiClients, fallbackConfig, meta?.institution?.primaryClientId, meta?.institution?.tenantType])
 
-  useEffect(() => {
-    if (!userLoaded) return
-    setSelectedClientId((current) => {
-      if (current && tenantConfig.clients.some((client) => client.id === current)) {
-        return current
-      }
-      if (current === tenantConfig.defaultClientId) {
-        return current
-      }
-      return tenantConfig.defaultClientId
-    })
-  }, [userLoaded, tenantConfig.defaultClientId, tenantConfig.clients])
+  // Once the user is loaded, a selection that isn't one of this tenant's clients
+  // falls back to the default.
+  const effectiveClientId =
+    selectedClientId &&
+    (!userLoaded || tenantConfig.clients.some((client) => client.id === selectedClientId))
+      ? selectedClientId
+      : tenantConfig.defaultClientId
 
-  const selectedClient = useMemo(() => {
-    const id = selectedClientId ?? tenantConfig.defaultClientId
-    return (
-      tenantConfig.clients.find((client) => client.id === id) ??
+  const selectedClient = useMemo(
+    () =>
+      tenantConfig.clients.find((client) => client.id === effectiveClientId) ??
       getClientById(tenantConfig.defaultClientId) ??
-      tenantConfig.clients[0]!
-    )
-  }, [selectedClientId, tenantConfig])
+      tenantConfig.clients[0]!,
+    [effectiveClientId, tenantConfig],
+  )
 
   return (
     <ClientContext.Provider
@@ -147,7 +141,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         ...tenantConfig,
         isLoaded: userLoaded,
         isLoadingClients,
-        selectedClientId: selectedClientId ?? tenantConfig.defaultClientId,
+        selectedClientId: effectiveClientId,
         selectedClient,
         setSelectedClientId,
         refreshClients,

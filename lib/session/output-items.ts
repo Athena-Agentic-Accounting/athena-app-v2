@@ -83,6 +83,27 @@ export function enrichOutputEvent(
   }
 }
 
+const GENERIC_NARRATIVE_TITLES = new Set(["update", "analysis", "status update"])
+
+function normalizeKey(value?: string): string {
+  return (value ?? "").trim().toLowerCase()
+}
+
+/**
+ * Keep only the newest event sharing this event's key (a regenerated file or
+ * re-rendered table replaces the older one). Events without a key can't be
+ * matched to anything, so they are always kept.
+ */
+function isLatestWithKey(
+  all: ActivityStreamEvent[],
+  index: number,
+  keyOf: (event: ActivityStreamEvent) => string | undefined,
+): boolean {
+  const key = normalizeKey(keyOf(all[index]))
+  if (!key) return true
+  return all.findLastIndex((candidate) => normalizeKey(keyOf(candidate)) === key) === index
+}
+
 function getVisibleOutputEvents(events: ActivityStreamEvent[]): ActivityStreamEvent[] {
   const planChecklist = events.find(
     (event) =>
@@ -133,37 +154,23 @@ function getVisibleOutputEvents(events: ActivityStreamEvent[]): ActivityStreamEv
     }
 
     if (event.event.type === "file_created") {
-      const fileName = (event.event.data.fileName || "").trim().toLowerCase()
-      const lastFileIndex = all.findLastIndex((candidate) => {
-        if (candidate.event.type !== "file_created") return false
-        const candidateName = (candidate.event.data.fileName || "").trim().toLowerCase()
-        return fileName && candidateName && fileName === candidateName
-      })
-      return index === lastFileIndex
+      return isLatestWithKey(all, index, (candidate) =>
+        candidate.event.type === "file_created" ? candidate.event.data.fileName : undefined,
+      )
     }
 
     if (event.event.type === "table") {
-      const title = (event.event.data.title || "").trim().toLowerCase()
-      const lastTableIndex = all.findLastIndex((candidate) => {
-        if (candidate.event.type !== "table") return false
-        const candidateTitle = (candidate.event.data.title || "").trim().toLowerCase()
-        return title && candidateTitle && title === candidateTitle
-      })
-      return index === lastTableIndex
+      return isLatestWithKey(all, index, (candidate) =>
+        candidate.event.type === "table" ? candidate.event.data.title : undefined,
+      )
     }
 
     if (event.event.type === "narrative") {
-      const title = (event.event.data.title || "").trim().toLowerCase()
-      // Exclude generic status updates, "update", "analysis", or untyped notes from workpapers
-      if (!title || title === "update" || title === "analysis" || title === "status update") {
-        return false
-      }
-      const lastNarrativeIndex = all.findLastIndex((candidate) => {
-        if (candidate.event.type !== "narrative") return false
-        const candidateTitle = (candidate.event.data.title || "").trim().toLowerCase()
-        return candidateTitle === title
-      })
-      return index === lastNarrativeIndex
+      // Generic status notes are not workpapers.
+      if (GENERIC_NARRATIVE_TITLES.has(normalizeKey(event.event.data.title))) return false
+      return isLatestWithKey(all, index, (candidate) =>
+        candidate.event.type === "narrative" ? candidate.event.data.title : undefined,
+      )
     }
 
     if (event.event.type === "attention_required") {

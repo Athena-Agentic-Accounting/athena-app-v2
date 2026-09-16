@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { RiAddLine, RiGroupLine } from "@remixicon/react"
 import { toast } from "sonner"
@@ -12,6 +12,7 @@ import { useClient } from "@/components/providers/client-provider"
 import { PageHeader } from "@/components/shell/page-header"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
+import { useReload } from "@/hooks/use-reload"
 import { useWorkspacePermissions } from "@/hooks/use-workspace-permissions"
 import { listClients, type ApiClient } from "@/lib/api/clients"
 
@@ -23,28 +24,33 @@ export function ClientsView() {
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
 
-  const loadClients = useCallback(async () => {
-    setLoading(true)
-    try {
-      const token = await getToken()
-      const data = await listClients(token)
-      setClients(data)
-    } catch (err) {
-      toast.error("Could not load clients", {
-        description: err instanceof Error ? err.message : "Something went wrong.",
-      })
-      setClients([])
-    } finally {
-      setLoading(false)
-    }
-  }, [getToken])
+  const [reloadToken, reload] = useReload()
 
   useEffect(() => {
-    void loadClients()
-  }, [loadClients])
+    let cancelled = false
+    void (async () => {
+      try {
+        const token = await getToken()
+        const data = await listClients(token)
+        if (!cancelled) setClients(data)
+      } catch (err) {
+        if (cancelled) return
+        toast.error("Could not load clients", {
+          description: err instanceof Error ? err.message : "Something went wrong.",
+        })
+        setClients([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [getToken, reloadToken])
 
   function handleClientCreated() {
-    void loadClients()
+    setLoading(true)
+    reload()
     void refreshClients()
   }
 
