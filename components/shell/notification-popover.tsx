@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { RiNotification3Line, RiNotificationBadgeLine } from "@remixicon/react"
 import { toast } from "sonner"
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
+import { useReload } from "@/hooks/use-reload"
 import {
   NOTIFICATION_ICON,
   type AppNotification,
@@ -88,21 +89,28 @@ function PushNotificationsRow() {
   const [subscribed, setSubscribed] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const refreshState = useCallback(async () => {
-    if (!canUsePushNotifications()) return
-    setPermission(Notification.permission)
-    try {
-      const registration = await navigator.serviceWorker.getRegistration("/sw.js")
-      const subscription = await registration?.pushManager.getSubscription()
-      setSubscribed(Boolean(subscription))
-    } catch {
-      setSubscribed(false)
-    }
-  }, [])
+  const [stateToken, refreshState] = useReload()
 
   useEffect(() => {
-    void refreshState()
-  }, [refreshState])
+    if (!canUsePushNotifications()) return
+
+    let cancelled = false
+    void (async () => {
+      let isSubscribed = false
+      try {
+        const registration = await navigator.serviceWorker.getRegistration("/sw.js")
+        isSubscribed = Boolean(await registration?.pushManager.getSubscription())
+      } catch {
+        isSubscribed = false
+      }
+      if (cancelled) return
+      setPermission(Notification.permission)
+      setSubscribed(isSubscribed)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [stateToken])
 
   if (!canUsePushNotifications() || permission === null) return null
 
@@ -131,7 +139,7 @@ function PushNotificationsRow() {
         }
         await registerPushNotifications(token)
       }
-      await refreshState()
+      refreshState()
     } catch (err) {
       toast.error("Could not update browser notifications", {
         description: err instanceof Error ? err.message : "Something went wrong.",

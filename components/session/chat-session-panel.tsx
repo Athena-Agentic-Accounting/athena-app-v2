@@ -31,8 +31,6 @@ type ChatSessionPanelProps = {
   streamEvents: ActivityStreamEvent[]
   chatMessages?: SessionChatMessage[]
   outputs?: SessionOutputItem[]
-  activeOutputId?: string
-  onViewOutput?: (outputId: string) => void
   onOpenOutputs?: () => void
   onClose?: () => void
   onSendMessage?: (content: string) => Promise<void>
@@ -54,8 +52,6 @@ export function ChatSessionPanel({
   streamEvents,
   chatMessages = [],
   outputs = [],
-  activeOutputId,
-  onViewOutput,
   onOpenOutputs,
   onClose,
   onSendMessage,

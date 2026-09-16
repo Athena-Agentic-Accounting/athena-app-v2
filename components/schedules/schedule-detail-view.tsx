@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
@@ -21,6 +21,7 @@ import { useClient } from "@/components/providers/client-provider"
 import { PageHeader } from "@/components/shell/page-header"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
+import { useReload } from "@/hooks/use-reload"
 import {
   deleteSchedule,
   getSchedule,
@@ -61,30 +62,40 @@ export function ScheduleDetailView({ scheduleId }: ScheduleDetailViewProps) {
     return map
   }, [clients])
 
-  const load = useCallback(async () => {
+  const [reloadToken, reload] = useReload()
+  const [loadedScheduleId, setLoadedScheduleId] = useState(scheduleId)
+  if (loadedScheduleId !== scheduleId) {
+    setLoadedScheduleId(scheduleId)
     setLoading(true)
-    try {
-      const token = await getToken()
-      const [record, runItems] = await Promise.all([
-        getSchedule(token, scheduleId),
-        listScheduleRuns(token, scheduleId),
-      ])
-      setSchedule(record)
-      setRuns(runItems)
-    } catch (err) {
-      setSchedule(null)
-      setRuns([])
-      toast.error("Could not load schedule", {
-        description: err instanceof Error ? err.message : "Something went wrong.",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [getToken, scheduleId])
+  }
 
   useEffect(() => {
-    void load()
-  }, [load])
+    let cancelled = false
+    void (async () => {
+      try {
+        const token = await getToken()
+        const [record, runItems] = await Promise.all([
+          getSchedule(token, scheduleId),
+          listScheduleRuns(token, scheduleId),
+        ])
+        if (cancelled) return
+        setSchedule(record)
+        setRuns(runItems)
+      } catch (err) {
+        if (cancelled) return
+        setSchedule(null)
+        setRuns([])
+        toast.error("Could not load schedule", {
+          description: err instanceof Error ? err.message : "Something went wrong.",
+        })
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [getToken, scheduleId, reloadToken])
 
   async function handleToggleEnabled() {
     if (!schedule) return
@@ -324,7 +335,8 @@ export function ScheduleDetailView({ scheduleId }: ScheduleDetailViewProps) {
         onOpenChange={setEditOpen}
         onUpdated={(updated) => {
           setSchedule(updated)
-          void load()
+          setLoading(true)
+          reload()
         }}
       />
     </div>

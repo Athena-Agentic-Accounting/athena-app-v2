@@ -11,6 +11,7 @@ import { ConnectionStatusBadge } from "@/components/clients/connection-status-ba
 import { PageHeader } from "@/components/shell/page-header"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
+import { useReload } from "@/hooks/use-reload"
 import { listClients, type ApiClient } from "@/lib/api/clients"
 import type { IntegrationProvider } from "@/lib/athena/user-metadata"
 import {
@@ -72,23 +73,29 @@ export function ConnectionsView() {
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState<string | null>(null)
 
-  const loadClients = useCallback(async () => {
-    try {
-      const token = await getToken()
-      setClients(await listClients(token))
-    } catch (err) {
-      toast.error("Could not load connections", {
-        description: err instanceof Error ? err.message : "Something went wrong.",
-      })
-      setClients([])
-    } finally {
-      setLoading(false)
-    }
-  }, [getToken])
+  const [reloadToken, reloadClients] = useReload()
 
   useEffect(() => {
-    void loadClients()
-  }, [loadClients])
+    let cancelled = false
+    void (async () => {
+      try {
+        const token = await getToken()
+        const items = await listClients(token)
+        if (!cancelled) setClients(items)
+      } catch (err) {
+        if (cancelled) return
+        toast.error("Could not load connections", {
+          description: err instanceof Error ? err.message : "Something went wrong.",
+        })
+        setClients([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [getToken, reloadToken])
 
   const handleConnect = useCallback(
     async (client: ApiClient, provider: IntegrationProvider) => {
@@ -99,7 +106,7 @@ export function ConnectionsView() {
         toast.success(`${getIntegrationLabel(provider)} connected`, {
           description: client.name,
         })
-        await loadClients()
+        reloadClients()
       } catch (err) {
         toast.error(`${getIntegrationLabel(provider)} connection failed`, {
           description: err instanceof Error ? err.message : "Something went wrong.",
@@ -108,7 +115,7 @@ export function ConnectionsView() {
         setPending(null)
       }
     },
-    [getToken, loadClients],
+    [getToken, reloadClients],
   )
 
   const connectedCount = useMemo(
@@ -140,7 +147,7 @@ export function ConnectionsView() {
             variant="outline"
             size="sm"
             disabled={loading}
-            onClick={() => void loadClients()}
+            onClick={reloadClients}
           >
             <RiRefreshLine className="size-3.5" data-icon="inline-start" />
             Refresh

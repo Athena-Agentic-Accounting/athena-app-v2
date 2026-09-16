@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth, useOrganization, useUser } from "@clerk/nextjs"
 import { RiArrowLeftSLine, RiBriefcaseLine, RiBuildingLine } from "@remixicon/react"
@@ -20,6 +20,7 @@ import {
 import {
   buildAthenaMetadataUpdate,
   getAthenaMetadata,
+  type AthenaUnsafeMetadata,
   type TenantType,
 } from "@/lib/athena/user-metadata"
 import { connectIntegration } from "@/lib/integrations/connect-integration"
@@ -89,6 +90,23 @@ const INVITE_ROLES: { value: ClientMemberRole; label: string }[] = [
   { value: "client_observer", label: "Observer" },
 ]
 
+function getResumeStep(savedMeta: AthenaUnsafeMetadata): OnboardingStepId {
+  const institution = savedMeta.institution
+  const savedTenantType = institution?.tenantType
+  if (!institution || !savedTenantType) return "tenant-type"
+  if (!institution.organizationName) return "organization-name"
+  if (savedTenantType === "accounting_firm" && !institution.firstClientName) {
+    return "add-first-client"
+  }
+  if (!institution.primaryClientId) {
+    if (savedTenantType === "in_house") return "connect-quickbooks"
+    return "add-first-client"
+  }
+  if (!institution.integrations?.quickbooks) return "connect-quickbooks"
+  if (savedTenantType === "accounting_firm") return "invite-team"
+  return "connect-google-drive"
+}
+
 export function InstitutionOnboarding({ returnPath }: InstitutionOnboardingProps) {
   const { user, isLoaded } = useUser()
   const { getToken } = useAuth()
@@ -134,11 +152,12 @@ export function InstitutionOnboarding({ returnPath }: InstitutionOnboardingProps
 
   // Workspaces are provisioned by the Athena team on the Clerk dashboard, so
   // the dashboard org name is authoritative — prefill it when nothing saved.
-  useEffect(() => {
-    const dashboardName = organization?.name?.trim()
-    if (!dashboardName) return
-    setOrganizationName((current) => (current.trim() ? current : dashboardName))
-  }, [organization?.name])
+  const dashboardName = organization?.name?.trim() ?? ""
+  const [prefilledFrom, setPrefilledFrom] = useState("")
+  if (dashboardName && prefilledFrom !== dashboardName) {
+    setPrefilledFrom(dashboardName)
+    if (!organizationName.trim()) setOrganizationName(dashboardName)
+  }
 
   const steps = useMemo(() => getOnboardingSteps(tenantType), [tenantType])
   const currentStep = steps.find((step) => step.id === currentStepId) ?? steps[0]
@@ -146,58 +165,17 @@ export function InstitutionOnboarding({ returnPath }: InstitutionOnboardingProps
   const stepLabel =
     stepIndex >= 0 ? `Step ${stepIndex + 1} of ${steps.length}` : undefined
 
-  useEffect(() => {
-    if (!isLoaded || !savedMeta) return
-
+  // Resume where the user left off whenever their saved progress changes.
+  const [resumedFrom, setResumedFrom] = useState<typeof savedMeta>(undefined)
+  if (isLoaded && savedMeta && resumedFrom !== savedMeta) {
+    setResumedFrom(savedMeta)
     const savedTenantType = savedMeta.institution?.tenantType
-    const savedSteps = getOnboardingSteps(savedTenantType)
-
-    if (!savedTenantType) {
-      setCurrentStepId("tenant-type")
-      return
-    }
-
-    setTenantType(savedTenantType)
+    if (savedTenantType) setTenantType(savedTenantType)
     if (savedMeta.institution?.primaryClientId) {
       setPrimaryClientId(savedMeta.institution.primaryClientId)
     }
-
-    if (!savedMeta.institution?.organizationName) {
-      setCurrentStepId("organization-name")
-      return
-    }
-
-    if (
-      savedTenantType === "accounting_firm" &&
-      !savedMeta.institution.firstClientName
-    ) {
-      setCurrentStepId("add-first-client")
-      return
-    }
-
-    if (!savedMeta.institution.primaryClientId) {
-      if (savedTenantType === "in_house" && savedMeta.institution.organizationName) {
-        setCurrentStepId("connect-quickbooks")
-        return
-      }
-      if (savedTenantType === "accounting_firm") {
-        setCurrentStepId("add-first-client")
-        return
-      }
-    }
-
-    if (!savedMeta.institution.integrations?.quickbooks) {
-      setCurrentStepId("connect-quickbooks")
-      return
-    }
-
-    if (savedTenantType === "accounting_firm") {
-      setCurrentStepId("invite-team")
-      return
-    }
-
-    setCurrentStepId("connect-google-drive")
-  }, [isLoaded, savedMeta])
+    setCurrentStepId(getResumeStep(savedMeta))
+  }
 
   async function persistMetadata(
     patch: Parameters<typeof buildAthenaMetadataUpdate>[1],

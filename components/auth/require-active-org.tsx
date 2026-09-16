@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { useAuth, useClerk, useOrganizationList } from "@clerk/nextjs"
 
 import { Button } from "@/components/ui/button"
@@ -21,7 +21,7 @@ export function RequireActiveOrg({ children }: { children: React.ReactNode }) {
   const { signOut } = useClerk()
   const activating = useRef(false)
 
-  const memberships = userMemberships?.data ?? []
+  const memberships = useMemo(() => userMemberships?.data ?? [], [userMemberships?.data])
   const membershipsLoading = !orgsLoaded || userMemberships?.isLoading
 
   useEffect(() => {

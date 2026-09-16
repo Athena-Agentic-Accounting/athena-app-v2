@@ -152,28 +152,31 @@ export function NewTaskDialog({
   const [skills, setSkills] = useState<ApiSkill[]>([])
   const [attachedSkillIds, setAttachedSkillIds] = useState<string[]>([])
 
+  // Start from a clean form each time the dialog opens.
+  const [wasOpen, setWasOpen] = useState(false)
+  if (wasOpen !== open) {
+    setWasOpen(open)
+    if (open) {
+      setExpanded(false)
+      setClientId(selectedClientId !== ALL_CLIENTS_ID ? selectedClientId : "")
+      setTitle("")
+      setDescription("")
+      setTaskStatus(defaultStatus)
+      setActivityType(DEFAULT_ACTIVITY_CATEGORY)
+      setRecurrence("none")
+      setStartDate("")
+      setStartTime("09:00")
+      setTimezone(getDefaultTimezone())
+      setCreateMore(false)
+      setAttachedSkillIds([])
+    }
+  }
+
   useEffect(() => {
     if (!open) return
-
-    const isClientScoped = selectedClientId !== ALL_CLIENTS_ID
-    const defaultClientId = isClientScoped ? selectedClientId : ""
-
-    setExpanded(false)
-    setClientId(defaultClientId)
-    setTitle("")
-    setDescription("")
-    setTaskStatus(defaultStatus)
-    setActivityType(DEFAULT_ACTIVITY_CATEGORY)
-    setRecurrence("none")
-    setStartDate("")
-    setStartTime("09:00")
-    setTimezone(getDefaultTimezone())
-    setCreateMore(false)
-    setAttachedSkillIds([])
-
     const timer = window.setTimeout(() => titleRef.current?.focus(), 50)
     return () => window.clearTimeout(timer)
-  }, [open, selectedClientId, selectableClients, defaultStatus])
+  }, [open])
 
   useEffect(() => {
     if (!open) return

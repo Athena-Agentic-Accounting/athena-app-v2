@@ -11,7 +11,7 @@ export function mapActivityMessages(messages: ActivityMessage[]): SessionChatMes
   return messages
     .filter((message) => {
       // If the message is already represented as a GenUI structured event, do not render as raw text bubble
-      if (message.structured || (message as any).structured_) {
+      if (message.structured || message.structured_) {
         return false
       }
       return true

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import {
@@ -30,10 +30,18 @@ function normalizeProvider(raw: string | null): IntegrationProvider | null {
   return null
 }
 
+const subscribeNever = () => () => {}
+
 export default function IntegrationsCallbackPage() {
   const searchParams = useSearchParams()
-  const [phase, setPhase] = useState<CallbackPhase>("loading")
-  const [closingPopup, setClosingPopup] = useState(false)
+  // Server render shows the spinner; the client knows the outcome and whether
+  // it was opened as an OAuth popup.
+  const hydrated = useSyncExternalStore(subscribeNever, () => true, () => false)
+  const closingPopup = useSyncExternalStore(
+    subscribeNever,
+    () => Boolean(window.opener),
+    () => false,
+  )
 
   const status = searchParams.get("status") === "success" ? "success" : "error"
   const provider = normalizeProvider(searchParams.get("provider"))
@@ -53,17 +61,14 @@ export default function IntegrationsCallbackPage() {
     [errorMessage, provider, status],
   )
 
-  useEffect(() => {
-    if (window.opener) {
-      window.opener.postMessage(popupPayload, window.location.origin)
-      setClosingPopup(true)
-      setPhase(status)
-      window.setTimeout(() => window.close(), 700)
-      return
-    }
+  const phase: CallbackPhase = hydrated ? status : "loading"
 
-    setPhase(status)
-  }, [popupPayload, status])
+  useEffect(() => {
+    if (!window.opener) return
+    window.opener.postMessage(popupPayload, window.location.origin)
+    const timer = window.setTimeout(() => window.close(), 700)
+    return () => window.clearTimeout(timer)
+  }, [popupPayload])
 
   if (phase === "loading") {
     return (

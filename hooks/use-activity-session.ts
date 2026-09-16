@@ -14,7 +14,7 @@ import {
   postActivityMessage,
   subscribeActivityStream,
 } from "@/lib/api/activities";
-import type { ActivityRecord } from "@/lib/activities/types";
+import type { ActivityMessage, ActivityRecord } from "@/lib/activities/types";
 import type {
   ActivityStreamEvent,
   PlanReviewDecision,
@@ -36,8 +36,20 @@ import { isPermanentStreamError } from "@/lib/api/sse";
 
 type StreamStatus = "idle" | "connecting" | "connected" | "error";
 
+/** A raw SSE frame: either a chat message or an enveloped GenUI event. */
+type RawStreamRecord = {
+  id?: string | number;
+  eventId?: string | number;
+  type?: string;
+  timestamp?: string;
+  data?: RawChatMessageData;
+  event?: { type?: string; data?: RawChatMessageData };
+};
+
+type RawChatMessageData = { role: SessionChatMessage["role"]; content: string };
+
 function extractStreamEventsFromMessages(
-  messages: any[],
+  messages: ActivityMessage[],
   activityId: string,
 ): ActivityStreamEvent[] {
   const events: ActivityStreamEvent[] = [];
@@ -74,6 +86,13 @@ export function useActivitySession(
   const [isSending, setIsSending] = useState(false);
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false);
   const [initialPromptSent, setInitialPromptSent] = useState(false);
+
+  // The stream is only open while a response is awaited.
+  const [streamingFor, setStreamingFor] = useState(isAwaitingResponse);
+  if (streamingFor !== isAwaitingResponse) {
+    setStreamingFor(isAwaitingResponse);
+    setStreamStatus(isAwaitingResponse ? "connecting" : "idle");
+  }
   const [activeOutputId, setActiveOutputId] = useState<string | undefined>();
 
   const activityIdRef = useRef(activityId);
@@ -240,18 +259,22 @@ export function useActivitySession(
   ]);
 
   useEffect(() => {
-    if (!isAwaitingResponse) {
-      setStreamStatus("idle");
-      return;
-    }
+    if (!isAwaitingResponse) return;
 
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
     let retryTimer: number | undefined;
     let retryCount = 0;
 
+    function reconnectAfter(delayMs: number) {
+      retryTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        setStreamStatus("connecting");
+        void connect();
+      }, delayMs);
+    }
+
     async function connect() {
-      setStreamStatus("connecting");
       const token = await getToken();
       if (cancelled) return;
 
@@ -270,7 +293,7 @@ export function useActivitySession(
         onEvent: (raw) => {
           if (cancelled) return;
 
-          const record = raw && typeof raw === "object" ? (raw as Record<string, any>) : null;
+          const record = raw && typeof raw === "object" ? (raw as RawStreamRecord) : null;
           const eventType = record?.event?.type ?? record?.type;
 
           if (eventType === "message") {
@@ -328,9 +351,7 @@ export function useActivitySession(
           setIsAwaitingResponse(false);
           void refreshMessages();
           if (isAwaitingResponseRef.current) {
-            retryTimer = window.setTimeout(() => {
-              if (!cancelled) void connect();
-            }, 1500);
+            reconnectAfter(1500);
           } else {
             setStreamStatus("idle");
           }
@@ -350,9 +371,7 @@ export function useActivitySession(
           }
 
           setStreamStatus("error");
-          retryTimer = window.setTimeout(() => {
-            if (!cancelled) void connect();
-          }, 4000 * retryCount);
+          reconnectAfter(4000 * retryCount);
         },
       });
     }

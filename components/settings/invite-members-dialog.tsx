@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useOrganization } from "@clerk/nextjs"
 import { isClerkAPIResponseError } from "@clerk/nextjs/errors"
 import { RiCloseLine } from "@remixicon/react"
@@ -19,6 +19,7 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Spinner } from "@/components/ui/spinner"
+import { useReload } from "@/hooks/use-reload"
 
 // Must match the roles configured on the Clerk instance (topical-teal-15).
 // "org:admin" / "org:member" ship with every instance; add custom roles
@@ -68,29 +69,39 @@ export function InviteMembersDialog({ open, onOpenChange }: InviteMembersDialogP
   const [invitations, setInvitations] = useState<PendingInvitation[]>([])
   const [loadingInvitations, setLoadingInvitations] = useState(false)
 
-  const loadInvitations = useCallback(async () => {
-    if (!organization) return
-    setLoadingInvitations(true)
-    try {
-      const page = await organization.getInvitations({ status: ["pending"] })
-      setInvitations(
-        page.data.map((invitation) => ({
-          id: invitation.id,
-          emailAddress: invitation.emailAddress,
-          role: String(invitation.role),
-          revoke: () => invitation.revoke(),
-        })),
-      )
-    } catch {
-      // Non-fatal: the invite form still works without the pending list.
-    } finally {
-      setLoadingInvitations(false)
-    }
-  }, [organization])
+  const [invitationsToken, reloadInvitations] = useReload()
+  const [wasOpen, setWasOpen] = useState(false)
+  if (wasOpen !== open) {
+    setWasOpen(open)
+    if (open && organization) setLoadingInvitations(true)
+  }
 
   useEffect(() => {
-    if (open) void loadInvitations()
-  }, [open, loadInvitations])
+    if (!open || !organization) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const page = await organization.getInvitations({ status: ["pending"] })
+        if (cancelled) return
+        setInvitations(
+          page.data.map((invitation) => ({
+            id: invitation.id,
+            emailAddress: invitation.emailAddress,
+            role: String(invitation.role),
+            revoke: () => invitation.revoke(),
+          })),
+        )
+      } catch {
+        // Non-fatal: the invite form still works without the pending list.
+      } finally {
+        if (!cancelled) setLoadingInvitations(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, organization, invitationsToken])
 
   async function handleInvite() {
     if (!organization) return
@@ -105,7 +116,7 @@ export function InviteMembersDialog({ open, onOpenChange }: InviteMembersDialogP
       await organization.inviteMember({ emailAddress: trimmed, role })
       toast.success(`Invitation sent to ${trimmed}`)
       setEmail("")
-      void loadInvitations()
+      reloadInvitations()
     } catch (err) {
       toast.error("Could not invite member", { description: inviteErrorMessage(err) })
     } finally {
@@ -117,7 +128,7 @@ export function InviteMembersDialog({ open, onOpenChange }: InviteMembersDialogP
     try {
       await invitation.revoke()
       toast.success(`Invitation to ${invitation.emailAddress} revoked`)
-      void loadInvitations()
+      reloadInvitations()
     } catch (err) {
       toast.error("Could not revoke invitation", {
         description: inviteErrorMessage(err),

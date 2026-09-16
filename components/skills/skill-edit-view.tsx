@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
@@ -35,29 +35,38 @@ export function SkillEditView({ skillId }: SkillEditViewProps) {
     }
   }, [canManageSkills, router])
 
-  const load = useCallback(async () => {
+  const [loadedSkillId, setLoadedSkillId] = useState(skillId)
+  if (loadedSkillId !== skillId) {
+    setLoadedSkillId(skillId)
     setLoading(true)
-    try {
-      const token = await getToken()
-      const [item, clientList] = await Promise.all([
-        getSkill(token, skillId),
-        listClients(token).catch(() => [] as ApiClient[]),
-      ])
-      setSkill(item)
-      setClients(clientList)
-    } catch (err) {
-      setSkill(null)
-      toast.error("Could not load skill", {
-        description: err instanceof Error ? err.message : "Something went wrong.",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [getToken, skillId])
+  }
 
   useEffect(() => {
-    void load()
-  }, [load])
+    let cancelled = false
+    void (async () => {
+      try {
+        const token = await getToken()
+        const [item, clientList] = await Promise.all([
+          getSkill(token, skillId),
+          listClients(token).catch(() => [] as ApiClient[]),
+        ])
+        if (cancelled) return
+        setSkill(item)
+        setClients(clientList)
+      } catch (err) {
+        if (cancelled) return
+        setSkill(null)
+        toast.error("Could not load skill", {
+          description: err instanceof Error ? err.message : "Something went wrong.",
+        })
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [getToken, skillId])
 
   async function handleSubmit(values: SkillFormValues) {
     if (!skill) return

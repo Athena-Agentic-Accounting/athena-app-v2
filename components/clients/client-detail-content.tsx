@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
@@ -41,6 +41,7 @@ import {
 } from "@/lib/clients/connection-status"
 import { formatTimeAgo } from "@/lib/format/time-ago"
 import { trackRecent } from "@/lib/navigation/recents"
+import { useReload } from "@/hooks/use-reload"
 import { useWorkspacePermissions } from "@/hooks/use-workspace-permissions"
 import { connectIntegration } from "@/lib/integrations/connect-integration"
 import { cn } from "@/lib/utils"
@@ -129,39 +130,45 @@ export function ClientDetailContent({
     })
   }, [clientId, detail.name])
 
-  const loadDriveIndex = useCallback(async () => {
-    if (drive.status === "not_connected") {
-      setDriveIndexCount(null)
-      setDriveLastSynced(null)
-      return
-    }
-
-    try {
-      const token = await getToken()
-      const index = await getDriveIndexStatus(token, clientId)
-      if (!index) return
-
-      setDriveIndexCount(index.documentCount ?? null)
-      setDriveLastSynced(index.lastSyncedAt ?? index.last_synced_at ?? null)
-      setDriveNeedsSetup(index.needsSetup ?? !index.folderId)
-      setDriveFolderId(index.folderId ?? undefined)
-      setDriveError(index.lastError ?? null)
-    } catch (err) {
-      toast.error("Could not load the Drive index status", {
-        description: err instanceof Error ? err.message : "Something went wrong.",
-      })
-    }
-  }, [clientId, drive.status, getToken])
+  const driveConnected = drive.status !== "not_connected"
+  const [driveIndexToken, reloadDriveIndex] = useReload()
 
   useEffect(() => {
-    void loadDriveIndex()
-  }, [loadDriveIndex])
+    if (!driveConnected) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const token = await getToken()
+        const index = await getDriveIndexStatus(token, clientId)
+        if (!index || cancelled) return
+
+        setDriveIndexCount(index.documentCount ?? null)
+        setDriveLastSynced(index.lastSyncedAt ?? index.last_synced_at ?? null)
+        setDriveNeedsSetup(index.needsSetup ?? !index.folderId)
+        setDriveFolderId(index.folderId ?? undefined)
+        setDriveError(index.lastError ?? null)
+      } catch (err) {
+        if (cancelled) return
+        toast.error("Could not load the Drive index status", {
+          description: err instanceof Error ? err.message : "Something went wrong.",
+        })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clientId, driveConnected, getToken, driveIndexToken])
+
+  // A disconnected Drive has no index to report.
+  const indexedCount = driveConnected ? driveIndexCount : null
+  const lastSynced = driveConnected ? driveLastSynced : null
+  // Results only apply to a non-empty query.
+  const hasDriveQuery = Boolean(driveSearchQuery.trim())
+  const visibleSearchResults = hasDriveQuery ? driveSearchResults : []
 
   useEffect(() => {
-    if (!driveSearchQuery.trim()) {
-      setDriveSearchResults([])
-      return
-    }
+    if (!hasDriveQuery) return
 
     const handle = window.setTimeout(async () => {
       setDriveSearching(true)
@@ -180,7 +187,7 @@ export function ClientDetailContent({
     }, 300)
 
     return () => window.clearTimeout(handle)
-  }, [clientId, driveSearchQuery, getToken])
+  }, [clientId, driveSearchQuery, hasDriveQuery, getToken])
 
   async function handleInvite(event: React.FormEvent) {
     event.preventDefault()
@@ -423,20 +430,20 @@ export function ClientDetailContent({
             <DriveFolderBinding
               clientId={clientId}
               boundFolderId={driveFolderId}
-              onBound={() => void loadDriveIndex()}
+              onBound={reloadDriveIndex}
             />
           </div>
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              {driveIndexCount != null ? (
+              {indexedCount != null ? (
                 <>
-                  <span className="font-medium text-foreground">{driveIndexCount}</span>{" "}
+                  <span className="font-medium text-foreground">{indexedCount}</span>{" "}
                   documents indexed
-                  {driveLastSynced ? (
+                  {lastSynced ? (
                     <>
                       {" "}
-                      · last synced {formatTimeAgo(driveLastSynced)}
+                      · last synced {formatTimeAgo(lastSynced)}
                     </>
                   ) : null}
                 </>
@@ -466,11 +473,11 @@ export function ClientDetailContent({
                 <Spinner className="size-3.5" />
                 Searching…
               </div>
-            ) : driveSearchQuery.trim() && driveSearchResults.length === 0 ? (
+            ) : hasDriveQuery && visibleSearchResults.length === 0 ? (
               <p className="text-sm text-muted-foreground">No documents found.</p>
             ) : (
               <ul className="space-y-2">
-                {driveSearchResults.map((result) => {
+                {visibleSearchResults.map((result) => {
                   const filename = result.filename ?? result.name ?? "Untitled"
                   const driveUrl =
                     result.driveUrl ?? result.drive_url ?? result.webViewLink

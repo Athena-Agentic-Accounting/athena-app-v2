@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/shell/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
+import { useReload } from "@/hooks/use-reload"
 import { deleteSchedule, listSchedules, updateSchedule } from "@/lib/api/schedules"
 import { ALL_CLIENTS_ID } from "@/lib/clients/resolve-clients"
 import { mapSchedulesToCalendarEvents } from "@/lib/schedules/map-to-calendar"
@@ -77,25 +78,39 @@ export function SchedulesView() {
     return map
   }, [clients])
 
-  const loadSchedules = useCallback(async () => {
+  const [reloadToken, reload] = useReload()
+  const [loadedFilter, setLoadedFilter] = useState(clientFilter)
+  if (loadedFilter !== clientFilter) {
+    setLoadedFilter(clientFilter)
     setLoading(true)
-    try {
-      const token = await getToken()
-      const items = await listSchedules(token, clientFilter)
-      setSchedules(items)
-    } catch (err) {
-      setSchedules([])
-      toast.error("Could not load schedules", {
-        description: err instanceof Error ? err.message : "Something went wrong.",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [clientFilter, getToken])
+  }
+
+  const reloadSchedules = useCallback(() => {
+    setLoading(true)
+    reload()
+  }, [reload])
 
   useEffect(() => {
-    void loadSchedules()
-  }, [loadSchedules])
+    let cancelled = false
+    void (async () => {
+      try {
+        const token = await getToken()
+        const items = await listSchedules(token, clientFilter)
+        if (!cancelled) setSchedules(items)
+      } catch (err) {
+        if (cancelled) return
+        setSchedules([])
+        toast.error("Could not load schedules", {
+          description: err instanceof Error ? err.message : "Something went wrong.",
+        })
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clientFilter, getToken, reloadToken])
 
   const visibleSchedules = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -365,7 +380,7 @@ export function SchedulesView() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={(schedule) => {
-          void loadSchedules()
+          reloadSchedules()
           router.push(`/schedules/${schedule.id}`)
         }}
       />
@@ -376,7 +391,7 @@ export function SchedulesView() {
         onOpenChange={(open) => {
           if (!open) setEditSchedule(null)
         }}
-        onUpdated={() => void loadSchedules()}
+        onUpdated={reloadSchedules}
       />
     </div>
   )

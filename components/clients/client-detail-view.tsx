@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { RiDownloadLine, RiGroupLine } from "@remixicon/react"
 import { toast } from "sonner"
@@ -16,6 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useReload } from "@/hooks/use-reload"
 import {
   downloadClientAuditExport,
   getClient,
@@ -42,25 +43,34 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
   const [loading, setLoading] = useState(true)
   const [exportingAudit, setExportingAudit] = useState(false)
 
-  const loadDetail = useCallback(async () => {
+  const [reloadToken, reload] = useReload()
+  const [loadedClientId, setLoadedClientId] = useState(clientId)
+  if (loadedClientId !== clientId) {
+    setLoadedClientId(clientId)
     setLoading(true)
-    try {
-      const token = await getToken()
-      const data = await getClient(token, clientId)
-      setDetail(data)
-    } catch (err) {
-      toast.error("Could not load client", {
-        description: err instanceof Error ? err.message : "Something went wrong.",
-      })
-      setDetail(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [clientId, getToken])
+  }
 
   useEffect(() => {
-    void loadDetail()
-  }, [loadDetail])
+    let cancelled = false
+    void (async () => {
+      try {
+        const token = await getToken()
+        const data = await getClient(token, clientId)
+        if (!cancelled) setDetail(data)
+      } catch (err) {
+        if (cancelled) return
+        toast.error("Could not load client", {
+          description: err instanceof Error ? err.message : "Something went wrong.",
+        })
+        setDetail(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clientId, getToken, reloadToken])
 
   async function handleAuditExport() {
     setExportingAudit(true)
@@ -79,7 +89,8 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
   }
 
   function handleUpdated() {
-    void loadDetail()
+    setLoading(true)
+    reload()
     void refreshClients()
   }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import {
   DndContext,
   DragOverlay,
@@ -160,12 +160,6 @@ export function ChecklistBoard({
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   )
-
-  useEffect(() => {
-    if (!activeTask && activeColumnId !== null) {
-      setActiveColumnId(null)
-    }
-  }, [activeTask, activeColumnId])
 
   if (showEmptyState && tasks.length === 0) {
     return (
