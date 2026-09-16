@@ -132,6 +132,50 @@ function getVisibleOutputEvents(events: ActivityStreamEvent[]): ActivityStreamEv
       return index === lastGateIndex
     }
 
+    if (event.event.type === "file_created") {
+      const fileName = (event.event.data.fileName || "").trim().toLowerCase()
+      const lastFileIndex = all.findLastIndex((candidate) => {
+        if (candidate.event.type !== "file_created") return false
+        const candidateName = (candidate.event.data.fileName || "").trim().toLowerCase()
+        return fileName && candidateName && fileName === candidateName
+      })
+      return index === lastFileIndex
+    }
+
+    if (event.event.type === "table") {
+      const title = (event.event.data.title || "").trim().toLowerCase()
+      const lastTableIndex = all.findLastIndex((candidate) => {
+        if (candidate.event.type !== "table") return false
+        const candidateTitle = (candidate.event.data.title || "").trim().toLowerCase()
+        return title && candidateTitle && title === candidateTitle
+      })
+      return index === lastTableIndex
+    }
+
+    if (event.event.type === "narrative") {
+      const title = (event.event.data.title || "").trim().toLowerCase()
+      if (title) {
+        const lastNarrativeIndex = all.findLastIndex((candidate) => {
+          if (candidate.event.type !== "narrative") return false
+          const candidateTitle = (candidate.event.data.title || "").trim().toLowerCase()
+          return candidateTitle === title
+        })
+        return index === lastNarrativeIndex
+      }
+    }
+
+    if (event.event.type === "attention_required") {
+      const title = (event.event.data.title || "").trim().toLowerCase()
+      if (title) {
+        const lastAttentionIndex = all.findLastIndex((candidate) => {
+          if (candidate.event.type !== "attention_required") return false
+          const candidateTitle = (candidate.event.data.title || "").trim().toLowerCase()
+          return candidateTitle === title
+        })
+        return index === lastAttentionIndex
+      }
+    }
+
     return true
   })
 }
